@@ -138,10 +138,21 @@ const FoodRecognition = () => {
                         </div>
                     </div>
                 ) : (
-                    <div className="relative">
-                        <img src={image} alt="Preview" className="w-full h-[300px] object-cover" />
+                    <div className="relative group">
+                        <img src={image} alt="Preview" className="w-full h-auto max-h-[400px] object-cover bg-black/5" />
                         {!result && !loading && (
-                            <div className="absolute bottom-6 left-0 right-0 flex justify-center gap-4 px-6">
+                            <div className="absolute bottom-6 left-0 right-0 flex justify-center gap-4 px-6 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                <button onClick={() => setImage(null)} className="btn btn-outline bg-white/90 backdrop-blur border-0 text-black shadow-lg hover:scale-105 transition-transform">
+                                    Trocar
+                                </button>
+                                <button onClick={analyzeImage} className="btn btn-primary shadow-lg hover:scale-105 transition-transform">
+                                    <Scan size={18} /> Analisar
+                                </button>
+                            </div>
+                        )}
+                        {/* Mobile always show buttons */}
+                        {!result && !loading && (
+                            <div className="absolute bottom-6 left-0 right-0 flex md:hidden justify-center gap-4 px-6">
                                 <button onClick={() => setImage(null)} className="btn btn-outline bg-white/90 backdrop-blur border-0 text-black shadow-lg">
                                     Trocar
                                 </button>
