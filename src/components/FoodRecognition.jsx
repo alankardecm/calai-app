@@ -173,6 +173,7 @@ const FoodRecognition = () => {
                     accept="image/*"
                     capture="environment"
                     className="hidden"
+                    style={{ display: 'none' }}
                     onChange={handleImageChange}
                 />
                 <input
@@ -180,6 +181,7 @@ const FoodRecognition = () => {
                     type="file"
                     accept="image/*"
                     className="hidden"
+                    style={{ display: 'none' }}
                     onChange={handleImageChange}
                 />
             </div>
