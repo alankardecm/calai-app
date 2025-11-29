@@ -16,23 +16,27 @@ const ProtectedRoute = ({ children }) => {
   return children;
 };
 
+import { ToastProvider } from './components/ToastSystem';
+
 function App() {
   return (
     <AuthProvider>
-      <Routes>
-        <Route path="/login" element={<Login />} />
+      <ToastProvider>
+        <Routes>
+          <Route path="/login" element={<Login />} />
 
-        <Route path="/" element={
-          <ProtectedRoute>
-            <Layout />
-          </ProtectedRoute>
-        }>
-          <Route index element={<FoodRecognition />} />
-          <Route path="history" element={<History />} />
-          <Route path="stats" element={<Stats />} />
-          <Route path="profile" element={<Profile />} />
-        </Route>
-      </Routes>
+          <Route path="/" element={
+            <ProtectedRoute>
+              <Layout />
+            </ProtectedRoute>
+          }>
+            <Route index element={<FoodRecognition />} />
+            <Route path="history" element={<History />} />
+            <Route path="stats" element={<Stats />} />
+            <Route path="profile" element={<Profile />} />
+          </Route>
+        </Routes>
+      </ToastProvider>
     </AuthProvider>
   );
 }

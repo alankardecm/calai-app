@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
-import { Camera, Upload, Scan, CheckCircle, AlertCircle, Loader2, ChevronRight } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Camera, Upload, Scan, CheckCircle, AlertCircle, Loader2, Sparkles, X, Image as ImageIcon } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from './ToastSystem';
 
 const FoodRecognition = () => {
     const [image, setImage] = useState(null);
@@ -10,7 +11,11 @@ const FoodRecognition = () => {
     const [result, setResult] = useState(null);
     const [error, setError] = useState(null);
     const [saving, setSaving] = useState(false);
+    const [analyzing, setAnalyzing] = useState(false);
     const { user } = useAuth();
+    const toast = useToast();
+    const fileInputRef = useRef(null);
+    const cameraInputRef = useRef(null);
 
     const handleImageChange = (e) => {
         const file = e.target.files[0];
@@ -30,32 +35,38 @@ const FoodRecognition = () => {
         if (!image) return;
 
         setLoading(true);
+        setAnalyzing(true);
         setError(null);
 
         try {
-            // MOCK PARA DEMONSTRAÇÃO (Remova quando conectar o n8n)
-            setTimeout(() => {
-                const mockResponse = {
-                    "alimento_reconhecido": "Frango Grelhado com Salada",
-                    "classificacao_geral": "Refeição Saudável",
-                    "porcao_descricao": "1 prato médio",
-                    "porcao_gramas": 350,
-                    "nutrientes": {
-                        "carboidratos_g": 12,
-                        "proteinas_g": 45,
-                        "gorduras_g": 10,
-                        "calorias_kcal": 320
-                    },
-                    "estimativa_confianca": 0.92,
-                    "observacoes": "Excelente escolha proteica. Baixo teor de gordura visível."
-                };
-                setResult(mockResponse);
-                setLoading(false);
-            }, 2000);
+            // Simulação de análise com stages
+            await new Promise(resolve => setTimeout(resolve, 800));
+
+            // MOCK RESPONSE - Substitua pela chamada real ao n8n
+            const mockResponse = {
+                "alimento_reconhecido": "Frango Grelhado com Salada",
+                "classificacao_geral": "Refeição Saudável",
+                "porcao_descricao": "1 prato médio",
+                "porcao_gramas": 350,
+                "nutrientes": {
+                    "carboidratos_g": 12,
+                    "proteinas_g": 45,
+                    "gorduras_g": 10,
+                    "calorias_kcal": 320
+                },
+                "estimativa_confianca": 0.92,
+                "observacoes": "Excelente escolha proteica. Baixo teor de gordura visível."
+            };
+
+            await new Promise(resolve => setTimeout(resolve, 1200));
+            setResult(mockResponse);
+            setAnalyzing(false);
 
         } catch (err) {
             console.error("Erro ao analisar imagem:", err);
-            setError("Erro ao analisar. Tente novamente.");
+            setError("Não conseguimos analisar esta imagem. Tente novamente com uma foto mais clara.");
+            setAnalyzing(false);
+        } finally {
             setLoading(false);
         }
     };
@@ -88,135 +99,298 @@ const FoodRecognition = () => {
                         protein: result.nutrientes.proteinas_g,
                         carbs: result.nutrientes.carboidratos_g,
                         fat: result.nutrientes.gorduras_g,
-                        confidence: result.estimativa_confianca
+                        confidence: result.estimativa_confianca,
+                        portion_grams: result.porcao_gramas,
+                        notes: result.observacoes
                     }
                 ]);
 
             if (dbError) throw dbError;
 
-            alert('Refeição salva com sucesso!');
-            setImage(null);
-            setResult(null);
-            setImageFile(null);
+            // Toast Success
+            toast.success('✅ Refeição salva com sucesso!');
+
+            // Reset
+            setTimeout(() => {
+                setImage(null);
+                setResult(null);
+                setImageFile(null);
+            }, 1000);
 
         } catch (err) {
             console.error("Erro ao salvar:", err);
-            alert('Erro ao salvar refeição: ' + err.message);
+            toast.error('❌ Erro ao salvar refeição');
         } finally {
             setSaving(false);
         }
     };
 
+    const resetImage = () => {
+        setImage(null);
+        setResult(null);
+        setImageFile(null);
+        setError(null);
+    };
+
     return (
-        <div className="flex flex-col gap-6 animate-fade-in pb-20">
-            <div className="text-center space-y-2 py-4">
-                <h2 className="text-3xl font-extrabold text-primary">O que você comeu?</h2>
-                <p className="text-muted text-lg">Tire uma foto para rastrear suas calorias</p>
-            </div>
-
-            <div className="bg-card rounded-[32px] overflow-hidden shadow-lg border-0">
-                {!image ? (
-                    <div className="p-10 flex flex-col items-center justify-center gap-6 text-center bg-secondary/30 min-h-[300px]">
-                        <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center shadow-sm text-primary">
-                            <Camera size={32} />
-                        </div>
-                        <div>
-                            <h3 className="text-xl font-bold mb-2">Adicionar Refeição</h3>
-                            <p className="text-muted text-sm max-w-[200px] mx-auto">Tire uma foto ou faça upload da galeria</p>
-                        </div>
-                        <div className="flex gap-4 w-full max-w-xs">
-                            <label className="btn btn-primary flex-1 cursor-pointer">
-                                <Camera size={18} />
-                                <span>Câmera</span>
-                                <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handleImageChange} />
-                            </label>
-                            <label className="btn btn-outline flex-1 cursor-pointer bg-white">
-                                <Upload size={18} />
-                                <span>Galeria</span>
-                                <input type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
-                            </label>
-                        </div>
-                    </div>
-                ) : (
-                    <div className="relative group">
-                        <img src={image} alt="Preview" className="w-full h-auto max-h-[400px] object-cover bg-black/5" />
-                        {!result && !loading && (
-                            <div className="absolute bottom-6 left-0 right-0 flex justify-center gap-4 px-6 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                                <button onClick={() => setImage(null)} className="btn btn-outline bg-white/90 backdrop-blur border-0 text-black shadow-lg hover:scale-105 transition-transform">
-                                    Trocar
-                                </button>
-                                <button onClick={analyzeImage} className="btn btn-primary shadow-lg hover:scale-105 transition-transform">
-                                    <Scan size={18} /> Analisar
-                                </button>
-                            </div>
-                        )}
-                        {/* Mobile always show buttons */}
-                        {!result && !loading && (
-                            <div className="absolute bottom-6 left-0 right-0 flex md:hidden justify-center gap-4 px-6">
-                                <button onClick={() => setImage(null)} className="btn btn-outline bg-white/90 backdrop-blur border-0 text-black shadow-lg">
-                                    Trocar
-                                </button>
-                                <button onClick={analyzeImage} className="btn btn-primary shadow-lg">
-                                    <Scan size={18} /> Analisar
-                                </button>
-                            </div>
-                        )}
-                        {loading && (
-                            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm flex flex-col items-center justify-center text-white">
-                                <Loader2 size={48} className="animate-spin mb-4" />
-                                <p className="font-bold text-lg">Analisando Alimento...</p>
-                            </div>
-                        )}
-                    </div>
-                )}
-            </div>
-
-            {result && (
-                <div className="space-y-6 animate-fade-in">
-                    <div className="bg-card rounded-[24px] p-6 border-0 shadow-md">
-                        <div className="flex items-start justify-between mb-6">
-                            <div>
-                                <h3 className="text-2xl font-extrabold text-primary mb-1">{result.alimento_reconhecido}</h3>
-                                <p className="text-muted font-medium">{result.porcao_descricao} • {result.porcao_gramas}g</p>
-                            </div>
-                            <div className="bg-accent/10 text-accent px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
-                                {result.classificacao_geral}
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-4 gap-3 mb-6">
-                            <MacroItem label="Calorias" value={result.nutrientes.calorias_kcal} unit="kcal" active />
-                            <MacroItem label="Carb" value={result.nutrientes.carboidratos_g} unit="g" />
-                            <MacroItem label="Prot" value={result.nutrientes.proteinas_g} unit="g" />
-                            <MacroItem label="Gord" value={result.nutrientes.gorduras_g} unit="g" />
-                        </div>
-
-                        <div className="bg-secondary p-4 rounded-xl text-sm text-muted flex items-start gap-3">
-                            <AlertCircle size={18} className="text-primary shrink-0 mt-0.5" />
-                            <div>
-                                <p className="leading-relaxed text-text-main">{result.observacoes}</p>
-                                <p className="mt-2 text-xs opacity-60 font-bold">Confiança da IA: {(result.estimativa_confianca * 100).toFixed(0)}%</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <button
-                        onClick={saveMeal}
-                        disabled={saving}
-                        className="btn btn-primary w-full py-4 text-lg shadow-xl"
-                    >
-                        {saving ? <Loader2 className="animate-spin" /> : 'Salvar no Histórico'}
-                    </button>
+        <div className="flex flex-col gap-6 animate-slide-up">
+            {/* Header */}
+            <div className="text-center space-y-3 pt-2">
+                <div className="inline-flex items-center gap-2 bg-accent/10 text-accent px-4 py-2 rounded-full text-sm font-bold">
+                    <Sparkles size={16} />
+                    <span>Powered by AI</span>
                 </div>
+                <h2 className="text-4xl font-black text-primary leading-tight">
+                    O que você comeu?
+                </h2>
+                <p className="text-muted text-lg font-medium">
+                    Tire uma foto para rastrear automaticamente
+                </p>
+            </div>
+
+            {/* Main Card */}
+            <div className="card card-hover rounded-xl overflow-hidden shadow-lg border-0">
+                {!image ? (
+                    <EmptyState
+                        onCameraClick={() => cameraInputRef.current?.click()}
+                        onGalleryClick={() => fileInputRef.current?.click()}
+                    />
+                ) : (
+                    <ImagePreview
+                        image={image}
+                        loading={loading}
+                        analyzing={analyzing}
+                        onReset={resetImage}
+                        onAnalyze={analyzeImage}
+                        error={error}
+                    />
+                )}
+
+                {/* Hidden Inputs */}
+                <input
+                    ref={cameraInputRef}
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    className="hidden"
+                    onChange={handleImageChange}
+                />
+                <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleImageChange}
+                />
+            </div>
+
+            {/* Results */}
+            {result && !loading && (
+                <ResultsCard result={result} onSave={saveMeal} saving={saving} />
             )}
         </div>
     );
 };
 
-const MacroItem = ({ label, value, unit, active }) => (
-    <div className={`flex flex-col items-center justify-center p-3 rounded-2xl ${active ? 'bg-primary text-white shadow-lg' : 'bg-secondary text-text-main'}`}>
-        <span className="text-xl font-extrabold">{value}</span>
-        <span className={`text-[10px] uppercase font-bold ${active ? 'opacity-80' : 'text-muted'}`}>{label}</span>
+// ========================================
+// SUB-COMPONENTS
+// ========================================
+
+const EmptyState = ({ onCameraClick, onGalleryClick }) => (
+    <div className="p-12 flex flex-col items-center justify-center gap-8 text-center bg-gradient-to-b from-secondary/30 to-transparent min-h-[350px]">
+        <div className="relative">
+            <div className="w-24 h-24 bg-gradient-to-br from-primary to-primary-hover rounded-3xl flex items-center justify-center text-white shadow-xl animate-scale-in">
+                <ImageIcon size={40} strokeWidth={2} />
+            </div>
+            <div className="absolute -top-2 -right-2 w-8 h-8 bg-accent rounded-full flex items-center justify-center text-white shadow-lg">
+                <Sparkles size={16} />
+            </div>
+        </div>
+
+        <div className="space-y-2">
+            <h3 className="text-2xl font-bold text-primary">Adicionar Refeição</h3>
+            <p className="text-muted text-sm max-w-[280px] mx-auto leading-relaxed">
+                Tire uma foto da sua refeição e descubra os nutrientes instantaneamente
+            </p>
+        </div>
+
+        <div className="flex flex-col gap-3 w-full max-w-xs">
+            <button onClick={onCameraClick} className="btn btn-primary flex-1 py-4 text-base shadow-xl">
+                <Camera size={20} strokeWidth={2.5} />
+                <span>Abrir Câmera</span>
+            </button>
+            <button onClick={onGalleryClick} className="btn btn-outline flex-1 py-4 text-base bg-white">
+                <Upload size={20} />
+                <span>Galeria de Fotos</span>
+            </button>
+        </div>
+    </div>
+);
+
+const ImagePreview = ({ image, loading, analyzing, onReset, onAnalyze, error }) => (
+    <div className="relative group">
+        <img
+            src={image}
+            alt="Preview"
+            className="w-full h-auto max-h-[400px] object-cover bg-secondary"
+        />
+
+        {/* Overlay Controls */}
+        {!loading && (
+            <>
+                {/* Reset Button */}
+                <button
+                    onClick={onReset}
+                    className="absolute top-4 right-4 w-10 h-10 bg-white/90 backdrop-blur rounded-full flex items-center justify-center shadow-lg hover:scale-110 transition-transform"
+                >
+                    <X size={20} className="text-primary" />
+                </button>
+
+                {/* Bottom Actions */}
+                <div className="absolute bottom-6 left-0 right-0 px-6">
+                    <button
+                        onClick={onAnalyze}
+                        className="btn btn-primary w-full py-4 text-lg shadow-2xl backdrop-blur"
+                    >
+                        <Scan size={22} strokeWidth={2.5} />
+                        <span>Analisar Alimento</span>
+                    </button>
+                </div>
+            </>
+        )}
+
+        {/* Loading Overlay */}
+        {loading && (
+            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex flex-col items-center justify-center text-white">
+                <div className="relative mb-6">
+                    <Loader2 size={56} className="animate-spin" strokeWidth={2} />
+                    <div className="absolute inset-0 flex items-center justify-center">
+                        <Sparkles size={24} className="animate-pulse" />
+                    </div>
+                </div>
+
+                <div className="text-center space-y-2">
+                    <p className="font-bold text-xl">
+                        {analyzing ? 'Analisando Alimento...' : 'Processando Imagem...'}
+                    </p>
+                    <p className="text-sm text-white/70 font-medium">
+                        Identificando nutrientes e porções
+                    </p>
+                </div>
+
+                {/* Progress Dots */}
+                <div className="flex gap-2 mt-6">
+                    {[0, 1, 2].map((i) => (
+                        <div
+                            key={i}
+                            className="w-2 h-2 bg-white/50 rounded-full animate-pulse"
+                            style={{ animationDelay: `${i * 0.2}s` }}
+                        />
+                    ))}
+                </div>
+            </div>
+        )}
+
+        {/* Error State */}
+        {error && (
+            <div className="absolute bottom-6 left-6 right-6 bg-red-500/90 backdrop-blur text-white p-4 rounded-2xl flex items-start gap-3">
+                <AlertCircle size={20} className="shrink-0 mt-0.5" />
+                <p className="text-sm font-medium">{error}</p>
+            </div>
+        )}
+    </div>
+);
+
+const ResultsCard = ({ result, onSave, saving }) => (
+    <div className="space-y-6 animate-slide-up">
+        {/* Main Info Card */}
+        <div className="card rounded-xl shadow-md border-0 overflow-hidden">
+            {/* Header */}
+            <div className="flex items-start justify-between mb-6">
+                <div className="flex-1">
+                    <h3 className="text-2xl font-black text-primary mb-1 leading-tight">
+                        {result.alimento_reconhecido}
+                    </h3>
+                    <p className="text-muted font-semibold text-sm">
+                        {result.porcao_descricao} • {result.porcao_gramas}g
+                    </p>
+                </div>
+                <div className="badge badge-success">
+                    <CheckCircle size={14} />
+                    {result.classificacao_geral}
+                </div>
+            </div>
+
+            {/* Macros Grid */}
+            <div className="grid grid-cols-4 gap-3 mb-6">
+                <MacroCard label="Calorias" value={result.nutrientes.calorias_kcal} unit="kcal" primary />
+                <MacroCard label="Carb" value={result.nutrientes.carboidratos_g} unit="g" />
+                <MacroCard label="Prot" value={result.nutrientes.proteinas_g} unit="g" />
+                <MacroCard label="Gord" value={result.nutrientes.gorduras_g} unit="g" />
+            </div>
+
+            {/* AI Insights */}
+            <div className="bg-gradient-to-br from-secondary to-secondary/50 p-5 rounded-2xl">
+                <div className="flex items-start gap-3">
+                    <div className="w-9 h-9 bg-white rounded-xl flex items-center justify-center shrink-0 shadow-sm">
+                        <Sparkles size={18} className="text-accent" />
+                    </div>
+                    <div className="flex-1 space-y-2">
+                        <p className="text-sm leading-relaxed text-primary font-medium">
+                            {result.observacoes}
+                        </p>
+                        <div className="flex items-center gap-2 text-xs text-muted font-bold">
+                            <div className="w-full h-1.5 bg-white/50 rounded-full overflow-hidden">
+                                <div
+                                    className="h-full bg-accent rounded-full transition-all duration-700"
+                                    style={{ width: `${result.estimativa_confianca * 100}%` }}
+                                />
+                            </div>
+                            <span className="whitespace-nowrap">
+                                {(result.estimativa_confianca * 100).toFixed(0)}% confiável
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {/* Save Button */}
+        <button
+            onClick={onSave}
+            disabled={saving}
+            className="btn btn-accent w-full py-5 text-lg shadow-2xl font-black"
+        >
+            {saving ? (
+                <>
+                    <Loader2 className="animate-spin" size={22} />
+                    <span>Salvando...</span>
+                </>
+            ) : (
+                <>
+                    <CheckCircle size={22} strokeWidth={2.5} />
+                    <span>Adicionar ao Histórico</span>
+                </>
+            )}
+        </button>
+    </div>
+);
+
+const MacroCard = ({ label, value, unit, primary }) => (
+    <div className={`
+        flex flex-col items-center justify-center p-4 rounded-2xl transition-all
+        ${primary
+            ? 'bg-gradient-to-br from-primary to-primary-hover text-white shadow-lg scale-105'
+            : 'bg-secondary text-primary'
+        }
+    `}>
+        <span className="text-2xl font-black mb-0.5">{value}</span>
+        <span className={`text-[9px] uppercase font-extrabold tracking-wider ${primary ? 'opacity-80' : 'text-muted'}`}>
+            {label}
+        </span>
+        <span className={`text-[8px] font-bold ${primary ? 'opacity-60' : 'text-muted'}`}>
+            {unit}
+        </span>
     </div>
 );
 
