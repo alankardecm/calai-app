@@ -53,8 +53,8 @@ const FoodRecognition = () => {
     // Função para comprimir imagem - super otimizada para Android
     const compressImage = (file) => {
         return new Promise((resolve, reject) => {
-            const MAX_SIZE = 480; // Muito menor para Android
-            const QUALITY = 0.5; // Qualidade mais baixa
+            const MAX_SIZE = 400; // Otimizado para evitar erro de memória
+            const QUALITY = 0.4; // Compressão mais agressiva
             
             // Usar createImageBitmap quando disponível (mais eficiente)
             if (typeof createImageBitmap === 'function') {
@@ -163,7 +163,6 @@ const FoodRecognition = () => {
             setError('Falha ao processar imagem.');
         } finally {
             setLoading(false);
-        }
         }
     };
 
