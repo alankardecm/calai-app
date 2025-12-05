@@ -50,63 +50,86 @@ const FoodRecognition = () => {
         }
     };
 
-    // Função para comprimir imagem - otimizada para celular
+    // Função para comprimir imagem - super otimizada para Android
     const compressImage = (file) => {
         return new Promise((resolve, reject) => {
-            // Criar URL temporária (não carrega tudo na memória)
-            const url = URL.createObjectURL(file);
-            const img = new Image();
+            const MAX_SIZE = 480; // Muito menor para Android
+            const QUALITY = 0.5; // Qualidade mais baixa
             
-            img.onload = () => {
-                // Liberar URL após carregar
-                URL.revokeObjectURL(url);
+            // Usar createImageBitmap quando disponível (mais eficiente)
+            if (typeof createImageBitmap === 'function') {
+                createImageBitmap(file)
+                    .then(bitmap => {
+                        const canvas = document.createElement('canvas');
+                        let width = bitmap.width;
+                        let height = bitmap.height;
+
+                        // Redimensionar
+                        const ratio = Math.min(MAX_SIZE / width, MAX_SIZE / height, 1);
+                        width = Math.round(width * ratio);
+                        height = Math.round(height * ratio);
+
+                        canvas.width = width;
+                        canvas.height = height;
+
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(bitmap, 0, 0, width, height);
+                        bitmap.close(); // Liberar memória
+
+                        canvas.toBlob((blob) => {
+                            const base64Promise = new Promise((res) => {
+                                const reader = new FileReader();
+                                reader.onloadend = () => res(reader.result);
+                                reader.readAsDataURL(blob);
+                            });
+                            
+                            base64Promise.then(base64 => {
+                                resolve({ base64, blob });
+                            });
+                        }, 'image/jpeg', QUALITY);
+                    })
+                    .catch(reject);
+            } else {
+                // Fallback para navegadores antigos
+                const url = URL.createObjectURL(file);
+                const img = new Image();
                 
-                const canvas = document.createElement('canvas');
-                const MAX_SIZE = 600; // Reduzido para 600px
+                img.onload = () => {
+                    URL.revokeObjectURL(url);
+                    
+                    const canvas = document.createElement('canvas');
+                    let width = img.width;
+                    let height = img.height;
+
+                    const ratio = Math.min(MAX_SIZE / width, MAX_SIZE / height, 1);
+                    width = Math.round(width * ratio);
+                    height = Math.round(height * ratio);
+
+                    canvas.width = width;
+                    canvas.height = height;
+
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    canvas.toBlob((blob) => {
+                        if (blob) {
+                            resolve({
+                                base64: canvas.toDataURL('image/jpeg', QUALITY),
+                                blob
+                            });
+                        } else {
+                            reject(new Error('Falha'));
+                        }
+                    }, 'image/jpeg', QUALITY);
+                };
                 
-                let width = img.width;
-                let height = img.height;
-
-                // Redimensionar mantendo proporção
-                if (width > height) {
-                    if (width > MAX_SIZE) {
-                        height = (height * MAX_SIZE) / width;
-                        width = MAX_SIZE;
-                    }
-                } else {
-                    if (height > MAX_SIZE) {
-                        width = (width * MAX_SIZE) / height;
-                        height = MAX_SIZE;
-                    }
-                }
-
-                canvas.width = width;
-                canvas.height = height;
-
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0, width, height);
-
-                // Qualidade reduzida para 0.6
-                const compressedBase64 = canvas.toDataURL('image/jpeg', 0.6);
+                img.onerror = () => {
+                    URL.revokeObjectURL(url);
+                    reject(new Error('Erro'));
+                };
                 
-                canvas.toBlob((blob) => {
-                    if (blob) {
-                        resolve({
-                            base64: compressedBase64,
-                            blob: blob
-                        });
-                    } else {
-                        reject(new Error('Falha ao criar blob'));
-                    }
-                }, 'image/jpeg', 0.6);
-            };
-            
-            img.onerror = () => {
-                URL.revokeObjectURL(url);
-                reject(new Error('Falha ao carregar imagem'));
-            };
-            
-            img.src = url;
+                img.src = url;
+            }
         });
     };
 
@@ -114,34 +137,30 @@ const FoodRecognition = () => {
         const file = e.target.files[0];
         if (!file) return;
         
-        // Resetar input para permitir selecionar mesma foto
         e.target.value = '';
         
-        // Validar tamanho (máx 5MB agora)
-        if (file.size > 5 * 1024 * 1024) {
-            toast.error('❌ Imagem muito grande. Máximo 5MB.');
+        // Limite mais baixo para Android
+        if (file.size > 4 * 1024 * 1024) {
+            toast.error('❌ Foto muito grande. Use a galeria ou tire foto mais perto.');
             return;
         }
 
+        setLoading(true);
+        setError(null);
+        setResult(null);
+        setDietComparison(null);
+
+        // Dar tempo para o UI mostrar loading
+        await new Promise(r => setTimeout(r, 50));
+
         try {
-            setLoading(true);
-            setError(null);
-            
-            // Pequeno delay para UI atualizar
-            await new Promise(r => setTimeout(r, 100));
-            
-            // Comprimir imagem
             const compressed = await compressImage(file);
-            
             setImage(compressed.base64);
             setImageFile(new File([compressed.blob], 'foto.jpg', { type: 'image/jpeg' }));
-            setResult(null);
-            setDietComparison(null);
-            
         } catch (err) {
-            console.error('Erro ao processar imagem:', err);
-            toast.error('❌ Erro ao processar. Tente foto menor.');
-            setError('Não foi possível processar a imagem.');
+            console.error('Erro:', err);
+            toast.error('❌ Erro ao processar. Tente uma foto da galeria.');
+            setError('Falha ao processar imagem.');
         } finally {
             setLoading(false);
         }
