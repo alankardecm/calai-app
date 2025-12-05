@@ -1,9 +1,11 @@
 {
   "rewrites": [
-    { 
-      "source": "/api/analyze-food", 
-      "destination": "https://n8n.srv1121163.hstgr.cloud/webhook/analyze-food" 
-    },
     { "source": "/(.*)", "destination": "/" }
-  ]
+  ],
+  "functions": {
+    "api/analyze-food.js": {
+      "memory": 1024,
+      "maxDuration": 30
+    }
+  }
 }
