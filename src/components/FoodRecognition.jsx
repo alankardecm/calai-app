@@ -7,8 +7,8 @@ import { supabase } from '../supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from './ToastSystem';
 
-// URL do webhook N8N - Configure no .env
-const N8N_WEBHOOK_URL = import.meta.env.VITE_N8N_WEBHOOK_URL || 'https://seu-n8n.com/webhook/analyze-food';
+// URL do webhook N8N - Usa proxy local para evitar CORS
+const N8N_WEBHOOK_URL = '/api/analyze-food';
 
 const FoodRecognition = () => {
     const [image, setImage] = useState(null);
