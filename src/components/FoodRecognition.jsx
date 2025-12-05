@@ -7,8 +7,8 @@ import { supabase } from '../supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from './ToastSystem';
 
-// URL do webhook N8N - Usa proxy local para evitar CORS
-const N8N_WEBHOOK_URL = '/api/analyze-food';
+// URL do webhook N8N - direto
+const N8N_WEBHOOK_URL = 'https://n8n.srv1121163.hstgr.cloud/webhook/analyze-food';
 
 const FoodRecognition = () => {
     const [image, setImage] = useState(null);

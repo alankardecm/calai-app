@@ -1,11 +1,5 @@
 {
   "rewrites": [
     { "source": "/(.*)", "destination": "/" }
-  ],
-  "functions": {
-    "api/analyze-food.js": {
-      "memory": 1024,
-      "maxDuration": 30
-    }
-  }
+  ]
 }
