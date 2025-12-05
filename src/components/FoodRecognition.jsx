@@ -50,7 +50,49 @@ const FoodRecognition = () => {
         }
     };
 
-    const handleImageChange = (e) => {
+    // Função para comprimir imagem
+    const compressImage = (file, maxWidth = 800, quality = 0.7) => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    let width = img.width;
+                    let height = img.height;
+
+                    // Redimensionar se necessário
+                    if (width > maxWidth) {
+                        height = (height * maxWidth) / width;
+                        width = maxWidth;
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    // Converter para base64 comprimido
+                    const compressedBase64 = canvas.toDataURL('image/jpeg', quality);
+                    
+                    // Converter para blob para salvar
+                    canvas.toBlob((blob) => {
+                        resolve({
+                            base64: compressedBase64,
+                            blob: blob
+                        });
+                    }, 'image/jpeg', quality);
+                };
+                img.onerror = reject;
+                img.src = e.target.result;
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
+    };
+
+    const handleImageChange = async (e) => {
         const file = e.target.files[0];
         if (file) {
             // Validar tamanho (máx 10MB)
@@ -59,15 +101,23 @@ const FoodRecognition = () => {
                 return;
             }
 
-            setImageFile(file);
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setImage(reader.result);
+            try {
+                setLoading(true);
+                
+                // Comprimir imagem para evitar problemas de memória
+                const compressed = await compressImage(file, 800, 0.7);
+                
+                setImage(compressed.base64);
+                setImageFile(new File([compressed.blob], file.name, { type: 'image/jpeg' }));
                 setResult(null);
                 setDietComparison(null);
                 setError(null);
-            };
-            reader.readAsDataURL(file);
+            } catch (err) {
+                console.error('Erro ao processar imagem:', err);
+                toast.error('❌ Erro ao processar imagem. Tente outra foto.');
+            } finally {
+                setLoading(false);
+            }
         }
     };
 
