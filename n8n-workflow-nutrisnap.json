@@ -1,0 +1,149 @@
+{
+  "name": "NutriSnap - Food Analysis",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "analyze-food",
+        "responseMode": "responseNode",
+        "options": {
+          "rawBody": false
+        }
+      },
+      "id": "webhook-1",
+      "name": "Webhook - Receber Imagem",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "analyze-food"
+    },
+    {
+      "parameters": {
+        "jsCode": "const { image, user_id, has_diet, diet_targets, diet_goal } = $input.first().json;\n\n// Construir contexto da dieta\nlet dietContext = '';\nif (has_diet && diet_targets) {\n  dietContext = `\nO usuário tem uma dieta ativa com objetivo de ${diet_goal}.\nMetas diárias:\n- Calorias: ${diet_targets.calories} kcal\n- Proteínas: ${diet_targets.protein}g\n- Carboidratos: ${diet_targets.carbs}g\n- Gorduras: ${diet_targets.fat}g\n\nConsidere essas metas ao fazer observações sobre a refeição.\n`;\n}\n\nconst systemPrompt = `Você é um nutricionista especialista em análise de alimentos por imagem.\nAnalise a imagem da refeição e retorne APENAS um JSON válido (sem markdown, sem backticks) com esta estrutura:\n\n{\n  \"alimento_reconhecido\": \"Nome da refeição identificada\",\n  \"classificacao_geral\": \"Refeição Saudável\" ou \"Refeição Energética\" ou \"Refeição Calórica\",\n  \"porcao_descricao\": \"descrição da porção (ex: 1 prato médio)\",\n  \"porcao_gramas\": número em gramas,\n  \"nutrientes\": {\n    \"carboidratos_g\": número,\n    \"proteinas_g\": número,\n    \"gorduras_g\": número,\n    \"calorias_kcal\": número,\n    \"fibras_g\": número,\n    \"sodio_mg\": número\n  },\n  \"estimativa_confianca\": número entre 0 e 1,\n  \"observacoes\": \"Análise nutricional detalhada com emojis relevantes\",\n  \"alimentos_identificados\": [\n    { \"nome\": \"nome do alimento\", \"porcao\": \"porção estimada\", \"calorias\": número, \"proteina\": número }\n  ],\n  \"sugestoes\": [\"sugestão 1\", \"sugestão 2\"]\n}\n\n${dietContext}\n\nIMPORTANTE:\n- Seja preciso nas estimativas de macronutrientes baseado no tamanho visual\n- Use emojis nas observações para tornar agradável\n- Retorne APENAS o JSON, sem texto adicional, sem markdown`;\n\nreturn {\n  systemPrompt,\n  imageBase64: image,\n  userId: user_id,\n  dietGoal: diet_goal || 'nenhum'\n};"
+      },
+      "id": "code-prepare",
+      "name": "Preparar Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"gpt-4o\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": {{ JSON.stringify($json.systemPrompt) }}\n    },\n    {\n      \"role\": \"user\",\n      \"content\": [\n        {\n          \"type\": \"image_url\",\n          \"image_url\": {\n            \"url\": \"data:image/jpeg;base64,{{ $json.imageBase64 }}\",\n            \"detail\": \"high\"\n          }\n        },\n        {\n          \"type\": \"text\",\n          \"text\": \"Analise esta refeição e retorne os dados nutricionais em JSON puro.\"\n        }\n      ]\n    }\n  ],\n  \"max_tokens\": 1500,\n  \"temperature\": 0.3\n}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "openai-request",
+      "name": "OpenAI Vision",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "SUBSTITUA_PELA_SUA_CREDENCIAL",
+          "name": "OpenAI API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\n\ntry {\n  // Extrair conteúdo da resposta OpenAI\n  let content = response.choices?.[0]?.message?.content;\n  \n  if (!content) {\n    throw new Error('Resposta vazia da IA');\n  }\n  \n  // Limpar possíveis backticks de markdown\n  content = content.replace(/```json\\n?/g, '').replace(/```\\n?/g, '').trim();\n  \n  // Parsear JSON\n  const parsed = JSON.parse(content);\n  \n  // Validar campos obrigatórios\n  if (!parsed.alimento_reconhecido || !parsed.nutrientes) {\n    throw new Error('Resposta incompleta da IA');\n  }\n  \n  // Garantir que todos os campos existam\n  return {\n    alimento_reconhecido: parsed.alimento_reconhecido || \"Refeição identificada\",\n    classificacao_geral: parsed.classificacao_geral || \"Refeição\",\n    porcao_descricao: parsed.porcao_descricao || \"1 porção\",\n    porcao_gramas: parsed.porcao_gramas || 200,\n    nutrientes: {\n      carboidratos_g: parsed.nutrientes?.carboidratos_g || 0,\n      proteinas_g: parsed.nutrientes?.proteinas_g || 0,\n      gorduras_g: parsed.nutrientes?.gorduras_g || 0,\n      calorias_kcal: parsed.nutrientes?.calorias_kcal || 0,\n      fibras_g: parsed.nutrientes?.fibras_g || 0,\n      sodio_mg: parsed.nutrientes?.sodio_mg || 0\n    },\n    estimativa_confianca: parsed.estimativa_confianca || 0.8,\n    observacoes: parsed.observacoes || \"Análise realizada com sucesso.\",\n    alimentos_identificados: parsed.alimentos_identificados || [],\n    sugestoes: parsed.sugestoes || []\n  };\n  \n} catch (error) {\n  // Fallback em caso de erro\n  return {\n    alimento_reconhecido: \"Refeição não identificada\",\n    classificacao_geral: \"Análise indisponível\",\n    porcao_descricao: \"Não estimado\",\n    porcao_gramas: 0,\n    nutrientes: {\n      carboidratos_g: 0,\n      proteinas_g: 0,\n      gorduras_g: 0,\n      calorias_kcal: 0,\n      fibras_g: 0,\n      sodio_mg: 0\n    },\n    estimativa_confianca: 0,\n    observacoes: \"❌ Não foi possível analisar esta imagem. Erro: \" + error.message,\n    alimentos_identificados: [],\n    sugestoes: [\"Tire uma foto com melhor iluminação\", \"Centralize o prato na imagem\"]\n  };\n}"
+      },
+      "id": "code-parse",
+      "name": "Processar Resposta",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              }
+            ]
+          }
+        }
+      },
+      "id": "respond-webhook",
+      "name": "Responder",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1120, 300]
+    }
+  ],
+  "connections": {
+    "Webhook - Receber Imagem": {
+      "main": [
+        [
+          {
+            "node": "Preparar Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar Prompt": {
+      "main": [
+        [
+          {
+            "node": "OpenAI Vision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Vision": {
+      "main": [
+        [
+          {
+            "node": "Processar Resposta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Processar Resposta": {
+      "main": [
+        [
+          {
+            "node": "Responder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "pinData": {}
+}
