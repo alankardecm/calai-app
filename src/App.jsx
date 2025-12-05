@@ -6,6 +6,7 @@ import FoodRecognition from './components/FoodRecognition';
 import History from './pages/History';
 import Stats from './pages/Stats';
 import Profile from './pages/Profile';
+import Diet from './pages/Diet';
 import Login from './pages/Login';
 
 const ProtectedRoute = ({ children }) => {
@@ -33,6 +34,7 @@ function App() {
             <Route index element={<FoodRecognition />} />
             <Route path="history" element={<History />} />
             <Route path="stats" element={<Stats />} />
+            <Route path="diet" element={<Diet />} />
             <Route path="profile" element={<Profile />} />
           </Route>
         </Routes>

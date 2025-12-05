@@ -1,8 +1,14 @@
-import React, { useState, useRef } from 'react';
-import { Camera, Upload, Scan, CheckCircle, AlertCircle, Loader2, Sparkles, X, Image as ImageIcon } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import {
+    Camera, Upload, Scan, CheckCircle, AlertCircle, Loader2, Sparkles, X,
+    Image as ImageIcon, AlertTriangle, ThumbsUp, ThumbsDown, Info
+} from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from './ToastSystem';
+
+// URL do webhook N8N - Configure no .env
+const N8N_WEBHOOK_URL = import.meta.env.VITE_N8N_WEBHOOK_URL || 'https://seu-n8n.com/webhook/analyze-food';
 
 const FoodRecognition = () => {
     const [image, setImage] = useState(null);
@@ -12,19 +18,53 @@ const FoodRecognition = () => {
     const [error, setError] = useState(null);
     const [saving, setSaving] = useState(false);
     const [analyzing, setAnalyzing] = useState(false);
+    const [diet, setDiet] = useState(null);
+    const [dietComparison, setDietComparison] = useState(null);
     const { user } = useAuth();
     const toast = useToast();
     const fileInputRef = useRef(null);
     const cameraInputRef = useRef(null);
 
+    // Buscar dieta ativa do usuário
+    useEffect(() => {
+        if (user) {
+            fetchActiveDiet();
+        }
+    }, [user]);
+
+    const fetchActiveDiet = async () => {
+        try {
+            const { data, error } = await supabase
+                .from('diets')
+                .select('*')
+                .eq('user_id', user.id)
+                .eq('active', true)
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .single();
+
+            if (error && error.code !== 'PGRST116') throw error;
+            if (data) setDiet(data);
+        } catch (err) {
+            console.error('Erro ao buscar dieta:', err);
+        }
+    };
+
     const handleImageChange = (e) => {
         const file = e.target.files[0];
         if (file) {
+            // Validar tamanho (máx 10MB)
+            if (file.size > 10 * 1024 * 1024) {
+                toast.error('❌ Imagem muito grande. Máximo 10MB.');
+                return;
+            }
+
             setImageFile(file);
             const reader = new FileReader();
             reader.onloadend = () => {
                 setImage(reader.result);
                 setResult(null);
+                setDietComparison(null);
                 setError(null);
             };
             reader.readAsDataURL(file);
@@ -32,34 +72,58 @@ const FoodRecognition = () => {
     };
 
     const analyzeImage = async () => {
-        if (!image) return;
+        if (!image || !imageFile) return;
 
         setLoading(true);
         setAnalyzing(true);
         setError(null);
 
         try {
-            // Simulação de análise com stages
-            await new Promise(resolve => setTimeout(resolve, 800));
+            // Converter imagem para base64
+            const base64Image = image.split(',')[1];
 
-            // MOCK RESPONSE - Substitua pela chamada real ao n8n
-            const mockResponse = {
-                "alimento_reconhecido": "Frango Grelhado com Salada",
-                "classificacao_geral": "Refeição Saudável",
-                "porcao_descricao": "1 prato médio",
-                "porcao_gramas": 350,
-                "nutrientes": {
-                    "carboidratos_g": 12,
-                    "proteinas_g": 45,
-                    "gorduras_g": 10,
-                    "calorias_kcal": 320
-                },
-                "estimativa_confianca": 0.92,
-                "observacoes": "Excelente escolha proteica. Baixo teor de gordura visível."
+            // Preparar dados para enviar ao N8N
+            const payload = {
+                image: base64Image,
+                user_id: user.id,
+                has_diet: !!diet,
+                diet_targets: diet?.daily_targets || null,
+                diet_goal: diet?.goal || null,
+                timestamp: new Date().toISOString()
             };
 
-            await new Promise(resolve => setTimeout(resolve, 1200));
-            setResult(mockResponse);
+            // Tentar enviar para N8N
+            let analysisResult;
+
+            try {
+                const response = await fetch(N8N_WEBHOOK_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    throw new Error('N8N não disponível');
+                }
+
+                analysisResult = await response.json();
+            } catch (n8nError) {
+                console.warn('N8N não disponível, usando mock:', n8nError);
+                // Fallback para mock se N8N não estiver disponível
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                analysisResult = getMockAnalysis();
+            }
+
+            setResult(analysisResult);
+
+            // Se tem dieta, comparar
+            if (diet) {
+                const comparison = compareToDiet(analysisResult, diet);
+                setDietComparison(comparison);
+            }
+
             setAnalyzing(false);
 
         } catch (err) {
@@ -69,6 +133,191 @@ const FoodRecognition = () => {
         } finally {
             setLoading(false);
         }
+    };
+
+    const getMockAnalysis = () => {
+        // Respostas mock variadas para demonstração
+        const mockResponses = [
+            {
+                alimento_reconhecido: "Frango Grelhado com Salada e Arroz Integral",
+                classificacao_geral: "Refeição Saudável",
+                porcao_descricao: "1 prato médio",
+                porcao_gramas: 400,
+                nutrientes: {
+                    carboidratos_g: 45,
+                    proteinas_g: 42,
+                    gorduras_g: 12,
+                    calorias_kcal: 450,
+                    fibras_g: 6,
+                    sodio_mg: 380
+                },
+                estimativa_confianca: 0.92,
+                observacoes: "Excelente escolha proteica! O frango grelhado é uma ótima fonte de proteína magra. O arroz integral adiciona carboidratos complexos e a salada fornece fibras e micronutrientes.",
+                alimentos_identificados: [
+                    { nome: "Frango grelhado", porcao: "150g", calorias: 250, proteina: 38 },
+                    { nome: "Arroz integral", porcao: "100g", calorias: 130, proteina: 3 },
+                    { nome: "Salada verde", porcao: "150g", calorias: 45, proteina: 1 },
+                    { nome: "Azeite de oliva", porcao: "1 colher", calorias: 25, proteina: 0 }
+                ],
+                sugestoes: [
+                    "Adicione mais vegetais coloridos para aumentar vitaminas",
+                    "Considere trocar por batata doce para mais fibras"
+                ]
+            },
+            {
+                alimento_reconhecido: "Açaí com Granola e Frutas",
+                classificacao_geral: "Refeição Energética",
+                porcao_descricao: "1 tigela média",
+                porcao_gramas: 350,
+                nutrientes: {
+                    carboidratos_g: 85,
+                    proteinas_g: 8,
+                    gorduras_g: 15,
+                    calorias_kcal: 520,
+                    fibras_g: 8,
+                    sodio_mg: 45
+                },
+                estimativa_confianca: 0.88,
+                observacoes: "⚠️ Alto teor de carboidratos. Boa opção pré-treino, mas atenção se o objetivo for emagrecimento. O açaí natural é nutritivo, mas verifique se há açúcar adicionado.",
+                alimentos_identificados: [
+                    { nome: "Açaí", porcao: "200g", calorias: 280, proteina: 4 },
+                    { nome: "Granola", porcao: "50g", calorias: 180, proteina: 3 },
+                    { nome: "Banana", porcao: "1 unidade", calorias: 45, proteina: 1 },
+                    { nome: "Morango", porcao: "5 unidades", calorias: 15, proteina: 0 }
+                ],
+                sugestoes: [
+                    "Prefira versão sem açúcar adicionado",
+                    "Reduza a granola pela metade se busca emagrecer"
+                ]
+            },
+            {
+                alimento_reconhecido: "Pizza de Calabresa",
+                classificacao_geral: "Refeição Calórica",
+                porcao_descricao: "2 fatias médias",
+                porcao_gramas: 200,
+                nutrientes: {
+                    carboidratos_g: 52,
+                    proteinas_g: 18,
+                    gorduras_g: 22,
+                    calorias_kcal: 480,
+                    fibras_g: 2,
+                    sodio_mg: 980
+                },
+                estimativa_confianca: 0.95,
+                observacoes: "🔴 Alta densidade calórica e sódio elevado. Consumo eventual é aceitável, mas evite se estiver em fase de emagrecimento. A calabresa é processada e rica em gordura saturada.",
+                alimentos_identificados: [
+                    { nome: "Massa de pizza", porcao: "100g", calorias: 180, proteina: 6 },
+                    { nome: "Queijo mussarela", porcao: "50g", calorias: 140, proteina: 10 },
+                    { nome: "Calabresa", porcao: "40g", calorias: 120, proteina: 5 },
+                    { nome: "Molho de tomate", porcao: "30g", calorias: 15, proteina: 0 }
+                ],
+                sugestoes: [
+                    "Limite a 1 fatia e acompanhe com salada",
+                    "Prefira versões com mais vegetais"
+                ]
+            }
+        ];
+
+        return mockResponses[Math.floor(Math.random() * mockResponses.length)];
+    };
+
+    const compareToDiet = (analysisResult, userDiet) => {
+        const nutrients = analysisResult.nutrientes;
+        const targets = userDiet.daily_targets;
+        const goal = userDiet.goal;
+
+        // Calcular quanto essa refeição representa das metas diárias
+        const percentages = {
+            calories: Math.round((nutrients.calorias_kcal / targets.calories) * 100),
+            protein: Math.round((nutrients.proteinas_g / targets.protein) * 100),
+            carbs: Math.round((nutrients.carboidratos_g / targets.carbs) * 100),
+            fat: Math.round((nutrients.gorduras_g / targets.fat) * 100)
+        };
+
+        // Análise baseada no objetivo
+        let status = 'good';
+        let messages = [];
+        let warnings = [];
+        let tips = [];
+
+        if (goal === 'emagrecimento') {
+            // Para emagrecimento: priorizar proteína, controlar carbs e calorias
+            if (percentages.calories > 35) {
+                status = 'warning';
+                warnings.push('Esta refeição representa mais de 35% das suas calorias diárias');
+            }
+            if (percentages.protein < 25) {
+                warnings.push('Proteína abaixo do ideal para seu objetivo');
+                tips.push('Adicione mais fontes de proteína magra');
+            }
+            if (percentages.carbs > 40) {
+                status = 'warning';
+                warnings.push('Carboidratos acima do recomendado para emagrecimento');
+                tips.push('Prefira carboidratos complexos e reduza a porção');
+            }
+            if (percentages.protein >= 25 && percentages.carbs <= 30) {
+                messages.push('✅ Bom equilíbrio para emagrecimento!');
+            }
+        } else if (goal === 'fortalecimento') {
+            // Para fortalecimento: proteína é rei
+            if (percentages.protein < 30) {
+                status = 'warning';
+                warnings.push('Proteína insuficiente para ganho muscular');
+                tips.push('Aumente a porção de proteína para 40g+');
+            }
+            if (percentages.protein >= 35) {
+                messages.push('💪 Excelente dose de proteína para seus músculos!');
+            }
+            if (percentages.calories < 25) {
+                warnings.push('Calorias baixas para fase de fortalecimento');
+            }
+        } else {
+            // Manutenção: equilíbrio
+            if (percentages.calories > 25 && percentages.calories < 35) {
+                messages.push('⚖️ Refeição equilibrada para manutenção');
+            }
+        }
+
+        // Verificar se os alimentos batem com o planejado
+        if (userDiet.meals && userDiet.meals.length > 0) {
+            const currentHour = new Date().getHours();
+            const plannedMeal = findPlannedMeal(userDiet.meals, currentHour);
+
+            if (plannedMeal) {
+                tips.push(`📅 Refeição planejada para agora: ${plannedMeal.name}`);
+
+                // Verificar se os macros da refeição planejada batem
+                if (plannedMeal.target_calories && Math.abs(nutrients.calorias_kcal - plannedMeal.target_calories) > 100) {
+                    warnings.push(`Diferença de ${Math.abs(nutrients.calorias_kcal - plannedMeal.target_calories)}kcal do planejado`);
+                }
+            }
+        }
+
+        // Determinar status final
+        if (warnings.length >= 2) status = 'bad';
+        else if (warnings.length === 1) status = 'warning';
+        else if (messages.length > 0) status = 'good';
+
+        return {
+            status,
+            percentages,
+            messages,
+            warnings,
+            tips,
+            fitsGoal: status === 'good'
+        };
+    };
+
+    const findPlannedMeal = (meals, currentHour) => {
+        for (const meal of meals) {
+            if (meal.time) {
+                const mealHour = parseInt(meal.time.split(':')[0]);
+                if (Math.abs(mealHour - currentHour) <= 2) {
+                    return meal;
+                }
+            }
+        }
+        return null;
     };
 
     const saveMeal = async () => {
@@ -99,15 +348,19 @@ const FoodRecognition = () => {
                         protein: result.nutrientes.proteinas_g,
                         carbs: result.nutrientes.carboidratos_g,
                         fat: result.nutrientes.gorduras_g,
+                        fiber: result.nutrientes.fibras_g || 0,
+                        sodium: result.nutrientes.sodio_mg || 0,
                         confidence: result.estimativa_confianca,
                         portion_grams: result.porcao_gramas,
-                        notes: result.observacoes
+                        notes: result.observacoes,
+                        diet_compliance: dietComparison?.status || null,
+                        foods_detected: result.alimentos_identificados || [],
+                        classification: result.classificacao_geral
                     }
                 ]);
 
             if (dbError) throw dbError;
 
-            // Toast Success
             toast.success('✅ Refeição salva com sucesso!');
 
             // Reset
@@ -115,6 +368,7 @@ const FoodRecognition = () => {
                 setImage(null);
                 setResult(null);
                 setImageFile(null);
+                setDietComparison(null);
             }, 1000);
 
         } catch (err) {
@@ -130,6 +384,7 @@ const FoodRecognition = () => {
         setResult(null);
         setImageFile(null);
         setError(null);
+        setDietComparison(null);
     };
 
     return (
@@ -147,6 +402,23 @@ const FoodRecognition = () => {
                     Tire uma foto para rastrear automaticamente
                 </p>
             </div>
+
+            {/* Diet Status Banner */}
+            {diet && (
+                <div className="flex items-center gap-3 p-3 bg-accent/10 rounded-xl">
+                    <div className="w-10 h-10 bg-accent/20 rounded-xl flex items-center justify-center">
+                        <CheckCircle size={20} className="text-accent" />
+                    </div>
+                    <div className="flex-1">
+                        <p className="font-bold text-sm text-primary">Dieta Ativa</p>
+                        <p className="text-xs text-muted">
+                            {diet.goal === 'emagrecimento' ? '🔥 Emagrecimento' :
+                                diet.goal === 'fortalecimento' ? '💪 Fortalecimento' : '⚖️ Manutenção'}
+                            {diet.nutritionist_name && ` • ${diet.nutritionist_name}`}
+                        </p>
+                    </div>
+                </div>
+            )}
 
             {/* Main Card */}
             <div className="card card-hover rounded-xl overflow-hidden shadow-lg border-0">
@@ -188,7 +460,23 @@ const FoodRecognition = () => {
 
             {/* Results */}
             {result && !loading && (
-                <ResultsCard result={result} onSave={saveMeal} saving={saving} />
+                <>
+                    {/* Diet Comparison Alert */}
+                    {dietComparison && <DietComparisonCard comparison={dietComparison} />}
+
+                    {/* Main Results */}
+                    <ResultsCard result={result} onSave={saveMeal} saving={saving} />
+
+                    {/* Foods Detected */}
+                    {result.alimentos_identificados && (
+                        <FoodsDetectedCard foods={result.alimentos_identificados} />
+                    )}
+
+                    {/* AI Suggestions */}
+                    {result.sugestoes && result.sugestoes.length > 0 && (
+                        <SuggestionsCard suggestions={result.sugestoes} />
+                    )}
+                </>
             )}
         </div>
     );
@@ -393,6 +681,143 @@ const MacroCard = ({ label, value, unit, primary }) => (
         <span className={`text-[8px] font-bold ${primary ? 'opacity-60' : 'text-muted'}`}>
             {unit}
         </span>
+    </div>
+);
+
+// ========================================
+// NEW SUB-COMPONENTS
+// ========================================
+
+const DietComparisonCard = ({ comparison }) => {
+    const getStatusColor = (status) => {
+        switch (status) {
+            case 'good': return 'bg-green-500';
+            case 'warning': return 'bg-yellow-500';
+            case 'bad': return 'bg-red-500';
+            default: return 'bg-gray-500';
+        }
+    };
+
+    const getStatusIcon = (status) => {
+        switch (status) {
+            case 'good': return <ThumbsUp size={20} className="text-white" />;
+            case 'warning': return <AlertTriangle size={20} className="text-white" />;
+            case 'bad': return <ThumbsDown size={20} className="text-white" />;
+            default: return <Info size={20} className="text-white" />;
+        }
+    };
+
+    const getStatusBg = (status) => {
+        switch (status) {
+            case 'good': return 'bg-green-50 border-green-200';
+            case 'warning': return 'bg-yellow-50 border-yellow-200';
+            case 'bad': return 'bg-red-50 border-red-200';
+            default: return 'bg-gray-50 border-gray-200';
+        }
+    };
+
+    return (
+        <div className={`card rounded-xl shadow-md border-2 ${getStatusBg(comparison.status)} animate-slide-up`}>
+            {/* Header */}
+            <div className="flex items-center gap-3 mb-4">
+                <div className={`w-10 h-10 ${getStatusColor(comparison.status)} rounded-xl flex items-center justify-center`}>
+                    {getStatusIcon(comparison.status)}
+                </div>
+                <div>
+                    <h4 className="font-bold text-primary">
+                        {comparison.status === 'good' ? 'Dentro do Plano! 🎉' :
+                            comparison.status === 'warning' ? 'Atenção Necessária ⚠️' :
+                                'Fora do Plano 📊'}
+                    </h4>
+                    <p className="text-xs text-muted">Comparação com sua dieta</p>
+                </div>
+            </div>
+
+            {/* Percentages */}
+            <div className="grid grid-cols-4 gap-2 mb-4">
+                {Object.entries(comparison.percentages).map(([key, value]) => (
+                    <div key={key} className="text-center p-2 bg-white/50 rounded-xl">
+                        <p className="text-[10px] text-muted uppercase font-bold">
+                            {key === 'calories' ? 'Cal' : key === 'protein' ? 'Prot' : key === 'carbs' ? 'Carb' : 'Gord'}
+                        </p>
+                        <p className={`text-lg font-black ${value > 40 ? 'text-red-500' : value > 30 ? 'text-yellow-500' : 'text-green-500'
+                            }`}>
+                            {value}%
+                        </p>
+                        <p className="text-[9px] text-muted">do dia</p>
+                    </div>
+                ))}
+            </div>
+
+            {/* Messages & Warnings */}
+            {comparison.messages.length > 0 && (
+                <div className="space-y-1 mb-3">
+                    {comparison.messages.map((msg, i) => (
+                        <p key={i} className="text-sm text-green-700 font-medium">{msg}</p>
+                    ))}
+                </div>
+            )}
+
+            {comparison.warnings.length > 0 && (
+                <div className="space-y-1 mb-3">
+                    {comparison.warnings.map((warn, i) => (
+                        <p key={i} className="text-sm text-yellow-700 font-medium flex items-start gap-2">
+                            <AlertTriangle size={14} className="shrink-0 mt-0.5" />
+                            {warn}
+                        </p>
+                    ))}
+                </div>
+            )}
+
+            {/* Tips */}
+            {comparison.tips.length > 0 && (
+                <div className="pt-3 border-t border-current/10">
+                    {comparison.tips.map((tip, i) => (
+                        <p key={i} className="text-xs text-muted font-medium">{tip}</p>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
+
+const FoodsDetectedCard = ({ foods }) => (
+    <div className="card rounded-xl shadow-md animate-slide-up">
+        <h4 className="font-bold text-primary mb-4 flex items-center gap-2">
+            <span className="text-lg">🍽️</span>
+            Alimentos Identificados
+        </h4>
+        <div className="space-y-2">
+            {foods.map((food, index) => (
+                <div key={index} className="flex items-center justify-between p-3 bg-secondary rounded-xl">
+                    <div>
+                        <p className="font-semibold text-primary">{food.nome}</p>
+                        <p className="text-xs text-muted">{food.porcao}</p>
+                    </div>
+                    <div className="text-right">
+                        <p className="font-bold text-primary">{food.calorias} kcal</p>
+                        <p className="text-xs text-muted">{food.proteina}g prot</p>
+                    </div>
+                </div>
+            ))}
+        </div>
+    </div>
+);
+
+const SuggestionsCard = ({ suggestions }) => (
+    <div className="card rounded-xl shadow-md bg-gradient-to-br from-blue-50 to-cyan-50 border border-blue-100 animate-slide-up">
+        <h4 className="font-bold text-blue-800 mb-3 flex items-center gap-2">
+            <span className="text-lg">💡</span>
+            Sugestões da IA
+        </h4>
+        <ul className="space-y-2">
+            {suggestions.map((suggestion, index) => (
+                <li key={index} className="text-sm text-blue-700 font-medium flex items-start gap-2">
+                    <span className="text-blue-400 mt-1">•</span>
+                    {suggestion}
+                </li>
+            ))}
+        </ul>
     </div>
 );
 

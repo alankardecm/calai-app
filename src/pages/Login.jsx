@@ -16,11 +16,11 @@ const Login = () => {
         setLoading(true);
         try {
             if (isLogin) {
-                const { error } = await signIn(email, password);
+                const { error } = await signIn({ email, password });
                 if (error) throw error;
                 navigate('/');
             } else {
-                const { error } = await signUp(email, password);
+                const { error } = await signUp({ email, password });
                 if (error) throw error;
                 alert('Verifique seu email para confirmar o cadastro!');
             }
@@ -38,7 +38,7 @@ const Login = () => {
                     <div className="w-16 h-16 bg-black rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-black/20">
                         <span className="text-3xl">🥗</span>
                     </div>
-                    <h1 className="text-3xl font-extrabold tracking-tight text-black mb-2">CalAI</h1>
+                    <h1 className="text-3xl font-extrabold tracking-tight text-black mb-2">NutriSnap</h1>
                     <p className="text-gray-500 font-medium">
                         {isLogin ? 'Bem-vindo de volta' : 'Crie sua conta'}
                     </p>
