@@ -1,43 +1,80 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { ToastProvider } from './components/ToastSystem';
+
+// Layout
 import Layout from './components/Layout';
+
+// Pages
+import Login from './pages/Login';
+import Dashboard from './pages/Dashboard';
 import FoodRecognition from './components/FoodRecognition';
 import History from './pages/History';
-import Stats from './pages/Stats';
-import Profile from './pages/Profile';
 import Diet from './pages/Diet';
-import Login from './pages/Login';
+import Profile from './pages/Profile';
+import Stats from './pages/Stats';
 
+// Protected Route Component
 const ProtectedRoute = ({ children }) => {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background-dark flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-16 h-16 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
+          <p className="text-text-secondary font-medium">Carregando...</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!user) {
     return <Navigate to="/login" />;
   }
+
   return children;
 };
-
-import { ToastProvider } from './components/ToastSystem';
 
 function App() {
   return (
     <AuthProvider>
       <ToastProvider>
-        <Routes>
-          <Route path="/login" element={<Login />} />
+        <div className="min-h-screen bg-background-dark">
+          <Routes>
+            {/* Public Routes */}
+            <Route path="/login" element={<Login />} />
 
-          <Route path="/" element={
-            <ProtectedRoute>
-              <Layout />
-            </ProtectedRoute>
-          }>
-            <Route index element={<FoodRecognition />} />
-            <Route path="history" element={<History />} />
-            <Route path="stats" element={<Stats />} />
-            <Route path="diet" element={<Diet />} />
-            <Route path="profile" element={<Profile />} />
-          </Route>
-        </Routes>
+            {/* Protected Routes with Layout */}
+            <Route path="/" element={
+              <ProtectedRoute>
+                <Layout />
+              </ProtectedRoute>
+            }>
+              {/* Dashboard is the home */}
+              <Route index element={<Dashboard />} />
+
+              {/* Scanner - Botão central FAB */}
+              <Route path="scan" element={<FoodRecognition />} />
+
+              {/* Histórico de refeições */}
+              <Route path="history" element={<History />} />
+
+              {/* Dieta */}
+              <Route path="diet" element={<Diet />} />
+
+              {/* Perfil */}
+              <Route path="profile" element={<Profile />} />
+
+              {/* Stats (pode ser acessado do Dashboard) */}
+              <Route path="stats" element={<Stats />} />
+            </Route>
+
+            {/* Fallback */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </div>
       </ToastProvider>
     </AuthProvider>
   );

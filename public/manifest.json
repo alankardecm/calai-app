@@ -1,20 +1,29 @@
 {
-    "name": "CalAI",
-    "short_name": "CalAI",
+    "name": "FitAI Pro - Treinador Pessoal com IA",
+    "short_name": "FitAI Pro",
+    "description": "Seu treinador pessoal com inteligência artificial. Tire fotos das suas refeições e receba análise nutricional instantânea.",
     "start_url": "/",
     "display": "standalone",
-    "background_color": "#ffffff",
-    "theme_color": "#000000",
+    "background_color": "#152111",
+    "theme_color": "#4cdf20",
+    "orientation": "portrait",
     "icons": [
         {
             "src": "/icon-192x192.png",
             "sizes": "192x192",
-            "type": "image/png"
+            "type": "image/png",
+            "purpose": "any maskable"
         },
         {
             "src": "/icon-512x512.png",
             "sizes": "512x512",
-            "type": "image/png"
+            "type": "image/png",
+            "purpose": "any maskable"
         }
+    ],
+    "categories": [
+        "health",
+        "fitness",
+        "lifestyle"
     ]
 }

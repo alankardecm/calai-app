@@ -1,35 +1,29 @@
 <!doctype html>
-<html lang="en">
+<html lang="pt-BR" class="dark">
 
 <head>
   <meta charset="UTF-8" />
   <link rel="icon" type="image/svg+xml" href="/vite.svg" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#152111" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+  <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Material Symbols -->
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+    rel="stylesheet">
+
   <link rel="manifest" href="/manifest.json">
-  <title>NutriSnap - Monitoramento Nutricional</title>
+  <title>FitAI Pro - Seu Treinador Pessoal com IA</title>
 </head>
 
 <body>
   <div id="root"></div>
   <script type="module" src="/src/main.jsx"></script>
-  <script>
-    window.onerror = function (message, source, lineno, colno, error) {
-      const errorDiv = document.createElement('div');
-      errorDiv.style.position = 'fixed';
-      errorDiv.style.top = '0';
-      errorDiv.style.left = '0';
-      errorDiv.style.width = '100%';
-      errorDiv.style.backgroundColor = 'red';
-      errorDiv.style.color = 'white';
-      errorDiv.style.padding = '20px';
-      errorDiv.style.zIndex = '9999';
-      errorDiv.innerHTML = '<h3>Erro Detectado:</h3><p>' + message + '</p><p>' + source + ':' + lineno + '</p>';
-      document.body.appendChild(errorDiv);
-    };
-  </script>
 </body>
 
 </html>

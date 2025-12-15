@@ -1,61 +1,104 @@
 import React from 'react';
 import { Outlet, NavLink, useLocation } from 'react-router-dom';
-import { Scan, Clock, BarChart2, User, LogOut, Apple } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 const Layout = () => {
-    const { signOut } = useAuth();
+    const { user } = useAuth();
     const location = useLocation();
 
+    // Navegação items
     const navItems = [
-        { path: '/', icon: Scan, label: 'Scanner' },
-        { path: '/history', icon: Clock, label: 'Histórico' },
-        { path: '/diet', icon: Apple, label: 'Dieta' },
-        { path: '/stats', icon: BarChart2, label: 'Stats' },
-        { path: '/profile', icon: User, label: 'Perfil' },
+        { path: '/', icon: 'grid_view', label: 'Home' },
+        { path: '/history', icon: 'calendar_month', label: 'Histórico' },
+        { path: '/scan', icon: 'qr_code_scanner', label: 'Scan', isFab: true },
+        { path: '/diet', icon: 'restaurant', label: 'Dieta' },
+        { path: '/profile', icon: 'person', label: 'Perfil' },
     ];
 
+    // Determinar se estamos na tela de scan (para esconder nav se necessário)
+    const isScanner = location.pathname === '/scan' || location.pathname === '/';
+
     return (
-        <div className="min-h-screen bg-[#F2F2F7] font-sans text-slate-900">
-            {/* Mobile Header */}
-            <header className="bg-white/80 backdrop-blur-md border-b border-slate-200 sticky top-0 z-20 px-6 py-4 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 bg-black rounded-lg flex items-center justify-center text-white font-bold shadow-sm">
-                        N
+        <div className="app-container bg-background-dark min-h-screen">
+            {/* Header */}
+            <header className="app-header">
+                <div className="flex items-center gap-4">
+                    {/* Avatar */}
+                    <div className="relative">
+                        <div
+                            className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-primary-dark flex items-center justify-center text-white font-bold text-lg border-2 border-primary"
+                            style={{
+                                boxShadow: '0 0 15px rgba(76, 223, 32, 0.3)'
+                            }}
+                        >
+                            {user?.email?.charAt(0).toUpperCase() || 'U'}
+                        </div>
+                        <div className="absolute bottom-0 right-0 w-3 h-3 bg-primary rounded-full border-2 border-background-dark"></div>
                     </div>
-                    <span className="font-bold text-lg tracking-tight">NutriSnap</span>
+                    <div className="flex flex-col">
+                        <h2 className="text-white text-xl font-bold leading-tight">
+                            {getGreeting()}, {user?.email?.split('@')[0] || 'Atleta'}
+                        </h2>
+                        <p className="text-text-secondary text-sm font-medium">
+                            Vamos esmagar as metas hoje! 💪
+                        </p>
+                    </div>
                 </div>
-                <button onClick={signOut} className="p-2 text-slate-400 hover:text-red-500 transition-colors">
-                    <LogOut size={20} />
-                </button>
+
+                {/* Streak Badge */}
+                <div className="streak-badge">
+                    <span className="material-symbols-outlined text-orange-500 text-xl">
+                        local_fire_department
+                    </span>
+                    <p className="text-white text-sm font-bold">12 Dias</p>
+                </div>
             </header>
 
             {/* Main Content */}
-            <main className="max-w-md mx-auto w-full p-6 pb-32 animate-fade-in">
+            <main className="app-main">
                 <Outlet />
             </main>
 
             {/* Bottom Navigation */}
-            <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 px-4 py-3 pb-6 z-30 flex justify-between items-center shadow-[0_-4px_20px_rgba(0,0,0,0.03)]">
-                {navItems.map((item) => {
-                    const Icon = item.icon;
-                    const isActive = location.pathname === item.path;
-                    return (
-                        <NavLink
-                            key={item.path}
-                            to={item.path}
-                            className={`flex flex-col items-center gap-1 transition-all duration-300 ${isActive ? 'text-black scale-105' : 'text-slate-400 hover:text-slate-600'}`}
-                        >
-                            <div className={`p-1.5 rounded-xl ${isActive ? 'bg-black/5' : 'bg-transparent'}`}>
-                                <Icon size={22} strokeWidth={isActive ? 2.5 : 2} />
-                            </div>
-                            <span className="text-[9px] font-bold tracking-wide">{item.label}</span>
-                        </NavLink>
-                    );
-                })}
+            <nav className="bottom-nav">
+                <div className="bottom-nav-inner">
+                    {navItems.map((item) => (
+                        item.isFab ? (
+                            <NavLink
+                                key={item.path}
+                                to={item.path}
+                                className="fab"
+                            >
+                                <span className="material-symbols-outlined text-3xl">
+                                    {item.icon}
+                                </span>
+                            </NavLink>
+                        ) : (
+                            <NavLink
+                                key={item.path}
+                                to={item.path}
+                                className={({ isActive }) =>
+                                    `nav-button ${isActive ? 'active' : ''}`
+                                }
+                            >
+                                <span className="material-symbols-outlined text-[28px]">
+                                    {item.icon}
+                                </span>
+                            </NavLink>
+                        )
+                    ))}
+                </div>
             </nav>
         </div>
     );
+};
+
+// Helper function para saudação baseada na hora
+const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Bom dia';
+    if (hour < 18) return 'Boa tarde';
+    return 'Boa noite';
 };
 
 export default Layout;
