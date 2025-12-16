@@ -152,7 +152,7 @@ const Dashboard = () => {
             <section className="flex flex-col gap-3">
                 <div className="flex items-center justify-between">
                     <h3 className="text-lg font-bold text-white">Missão de Hoje</h3>
-                    <Link to="/stats" className="text-primary text-sm font-bold hover:underline">
+                    <Link to="/workouts" className="text-primary text-sm font-bold hover:underline">
                         Ver Plano
                     </Link>
                 </div>
@@ -161,7 +161,12 @@ const Dashboard = () => {
 
             {/* AI Insight Message */}
             <section className="flex flex-col gap-3">
-                <h3 className="text-lg font-bold text-white">Coach IA</h3>
+                <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-bold text-white">Coach IA</h3>
+                    <Link to="/coach" className="text-primary text-sm font-bold hover:underline">
+                        Conversar
+                    </Link>
+                </div>
                 <AIInsightCard />
             </section>
 

@@ -1,0 +1,164 @@
+{
+    "name": "FitAI Pro - Coach Chat",
+    "nodes": [
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "chat-coach",
+                "responseMode": "responseNode",
+                "options": {
+                    "rawBody": false
+                }
+            },
+            "id": "webhook-coach",
+            "name": "Webhook - Chat Coach",
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 2,
+            "position": [
+                240,
+                300
+            ],
+            "webhookId": "chat-coach"
+        },
+        {
+            "parameters": {
+                "jsCode": "const { message, user_id, user_name, user_goal, user_stats, conversation_history } = $input.first().json;\n\n// Construir contexto do usuário\nlet userContext = '';\nif (user_stats) {\n  userContext = `\nPerfil do usuário:\n- Nome: ${user_name || 'Atleta'}\n- Objetivo: ${user_goal || 'Melhorar saúde'}\n- Peso: ${user_stats.weight || 'Não informado'}kg\n- Altura: ${user_stats.height || 'Não informado'}cm\n- Nível de atividade: ${user_stats.activity_level || 'Moderado'}\n`;\n}\n\nconst systemPrompt = `Você é a Coach IA do FitAI Pro, uma personal trainer motivacional virtual.\n\nSua personalidade:\n- Motivadora, positiva e encorajadora\n- Usa emojis com moderação (💪🔥⚡🎯)\n- Respostas curtas e diretas (máximo 3 parágrafos)\n- Sempre oferece soluções práticas\n- Nunca julga, sempre apoia\n\n${userContext}\n\nRegras:\n1. Se o usuário estiver desmotivado, motive-o lembrando do seu objetivo\n2. Se pedirem exercícios, sugira 3-5 exercícios específicos com séries e repetições\n3. Se pedirem dicas de alimentação, seja específico mas não substitua um nutricionista\n4. Para treino em casa, sugira exercícios sem equipamento\n5. Sempre termine com uma pergunta ou call-to-action\n6. NUNCA invente dados médicos ou prometa resultados específicos\n\nResponda APENAS com o texto da resposta, sem JSON, sem markdown.`;\n\n// Montar histórico de conversa para contexto\nlet messages = [\n  { role: 'system', content: systemPrompt }\n];\n\n// Adicionar histórico se existir\nif (conversation_history && Array.isArray(conversation_history)) {\n  for (const msg of conversation_history.slice(-6)) { // Últimas 6 mensagens para contexto\n    messages.push({\n      role: msg.type === 'user' ? 'user' : 'assistant',\n      content: msg.text\n    });\n  }\n}\n\n// Adicionar mensagem atual\nmessages.push({ role: 'user', content: message });\n\nreturn {\n  messages,\n  userId: user_id\n};"
+            },
+            "id": "code-prepare-coach",
+            "name": "Preparar Prompt",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                460,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "https://api.openai.com/v1/chat/completions",
+                "authentication": "genericCredentialType",
+                "genericAuthType": "httpHeaderAuth",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ]
+                },
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={\n  \"model\": \"gpt-4o-mini\",\n  \"messages\": {{ JSON.stringify($json.messages) }},\n  \"max_tokens\": 500,\n  \"temperature\": 0.7\n}",
+                "options": {
+                    "timeout": 30000
+                }
+            },
+            "id": "openai-chat",
+            "name": "OpenAI Chat",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                680,
+                300
+            ],
+            "credentials": {
+                "httpHeaderAuth": {
+                    "id": "SUBSTITUA_PELA_SUA_CREDENCIAL",
+                    "name": "OpenAI API Key"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "jsCode": "const response = $input.first().json;\n\ntry {\n  const content = response.choices?.[0]?.message?.content;\n  \n  if (!content) {\n    throw new Error('Resposta vazia da IA');\n  }\n  \n  return {\n    success: true,\n    response: content.trim(),\n    timestamp: new Date().toISOString()\n  };\n  \n} catch (error) {\n  return {\n    success: false,\n    response: 'Desculpe, estou tendo dificuldades técnicas no momento. Tente novamente! 💪',\n    error: error.message,\n    timestamp: new Date().toISOString()\n  };\n}"
+            },
+            "id": "code-parse-coach",
+            "name": "Processar Resposta",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                900,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "respondWith": "json",
+                "responseBody": "={{ $json }}",
+                "options": {
+                    "responseHeaders": {
+                        "entries": [
+                            {
+                                "name": "Access-Control-Allow-Origin",
+                                "value": "*"
+                            }
+                        ]
+                    }
+                }
+            },
+            "id": "respond-coach",
+            "name": "Responder",
+            "type": "n8n-nodes-base.respondToWebhook",
+            "typeVersion": 1.1,
+            "position": [
+                1120,
+                300
+            ]
+        }
+    ],
+    "connections": {
+        "Webhook - Chat Coach": {
+            "main": [
+                [
+                    {
+                        "node": "Preparar Prompt",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Preparar Prompt": {
+            "main": [
+                [
+                    {
+                        "node": "OpenAI Chat",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "OpenAI Chat": {
+            "main": [
+                [
+                    {
+                        "node": "Processar Resposta",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Processar Resposta": {
+            "main": [
+                [
+                    {
+                        "node": "Responder",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "settings": {
+        "executionOrder": "v1"
+    },
+    "staticData": null,
+    "tags": [],
+    "triggerCount": 0,
+    "pinData": {}
+}

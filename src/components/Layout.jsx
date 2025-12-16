@@ -9,9 +9,9 @@ const Layout = () => {
     // Navegação items
     const navItems = [
         { path: '/', icon: 'grid_view', label: 'Home' },
-        { path: '/history', icon: 'calendar_month', label: 'Histórico' },
+        { path: '/workouts', icon: 'fitness_center', label: 'Treinos' },
         { path: '/scan', icon: 'qr_code_scanner', label: 'Scan', isFab: true },
-        { path: '/diet', icon: 'restaurant', label: 'Dieta' },
+        { path: '/history', icon: 'calendar_month', label: 'Histórico' },
         { path: '/profile', icon: 'person', label: 'Perfil' },
     ];
 

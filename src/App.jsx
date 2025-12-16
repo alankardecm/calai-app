@@ -12,8 +12,11 @@ import Dashboard from './pages/Dashboard';
 import FoodRecognition from './components/FoodRecognition';
 import History from './pages/History';
 import Diet from './pages/Diet';
+import Workouts from './pages/Workouts';
 import Profile from './pages/Profile';
 import Stats from './pages/Stats';
+import Onboarding from './pages/Onboarding';
+import Coach from './pages/Coach';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -64,11 +67,20 @@ function App() {
               {/* Dieta */}
               <Route path="diet" element={<Diet />} />
 
+              {/* Treinos */}
+              <Route path="workouts" element={<Workouts />} />
+
               {/* Perfil */}
               <Route path="profile" element={<Profile />} />
 
               {/* Stats (pode ser acessado do Dashboard) */}
               <Route path="stats" element={<Stats />} />
+
+              {/* Coach Motivacional */}
+              <Route path="coach" element={<Coach />} />
+
+              {/* Onboarding */}
+              <Route path="onboarding" element={<Onboarding />} />
             </Route>
 
             {/* Fallback */}

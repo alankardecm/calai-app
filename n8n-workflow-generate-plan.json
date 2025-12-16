@@ -1,0 +1,164 @@
+{
+    "name": "FitAI Pro - Generate Plan",
+    "nodes": [
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "generate-plan",
+                "responseMode": "responseNode",
+                "options": {
+                    "rawBody": false
+                }
+            },
+            "id": "webhook-plan",
+            "name": "Webhook - Generate Plan",
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 2,
+            "position": [
+                240,
+                300
+            ],
+            "webhookId": "generate-plan"
+        },
+        {
+            "parameters": {
+                "jsCode": "const { user_id, gender, age, weight, height, activity_level, goal } = $input.first().json;\n\n// Calcular TMB (Taxa Metabólica Basal) - Fórmula Mifflin-St Jeor\nlet tmb;\nif (gender === 'masculino') {\n  tmb = (10 * weight) + (6.25 * height) - (5 * age) + 5;\n} else {\n  tmb = (10 * weight) + (6.25 * height) - (5 * age) - 161;\n}\n\n// Fator de atividade\nconst activityFactors = {\n  'sedentario': 1.2,\n  'leve': 1.375,\n  'moderado': 1.55,\n  'intenso': 1.725,\n  'atleta': 1.9\n};\n\nconst factor = activityFactors[activity_level] || 1.55;\nlet tdee = Math.round(tmb * factor);\n\n// Ajustar baseado no objetivo\nlet calorieTarget, proteinTarget, carbsTarget, fatTarget;\nlet goalDescription;\n\nswitch(goal) {\n  case 'gordura':\n    calorieTarget = Math.round(tdee * 0.8); // Déficit de 20%\n    proteinTarget = Math.round(weight * 2.2); // 2.2g/kg para preservar massa\n    fatTarget = Math.round(weight * 0.8); // 0.8g/kg\n    carbsTarget = Math.round((calorieTarget - (proteinTarget * 4) - (fatTarget * 9)) / 4);\n    goalDescription = 'Perda de gordura com preservação de massa muscular';\n    break;\n  case 'massa':\n    calorieTarget = Math.round(tdee * 1.15); // Superávit de 15%\n    proteinTarget = Math.round(weight * 2.0); // 2g/kg\n    fatTarget = Math.round(weight * 1.0); // 1g/kg\n    carbsTarget = Math.round((calorieTarget - (proteinTarget * 4) - (fatTarget * 9)) / 4);\n    goalDescription = 'Ganho de massa muscular com mínimo ganho de gordura';\n    break;\n  default: // manter\n    calorieTarget = tdee;\n    proteinTarget = Math.round(weight * 1.8); // 1.8g/kg\n    fatTarget = Math.round(weight * 0.9); // 0.9g/kg\n    carbsTarget = Math.round((calorieTarget - (proteinTarget * 4) - (fatTarget * 9)) / 4);\n    goalDescription = 'Manutenção do peso atual com saúde';\n}\n\nconst systemPrompt = `Você é um personal trainer e nutricionista especialista em criar planos personalizados.\n\nDados do usuário:\n- Gênero: ${gender}\n- Idade: ${age} anos\n- Peso: ${weight}kg\n- Altura: ${height}cm\n- Nível de atividade: ${activity_level}\n- Objetivo: ${goal} (${goalDescription})\n- TDEE calculado: ${tdee} kcal\n- Meta calórica: ${calorieTarget} kcal\n\nCrie um plano completo em JSON com EXATAMENTE esta estrutura:\n\n{\n  \"nutrition\": {\n    \"daily_calories\": ${calorieTarget},\n    \"daily_protein\": ${proteinTarget},\n    \"daily_carbs\": ${carbsTarget},\n    \"daily_fat\": ${fatTarget},\n    \"meals\": [\n      {\n        \"name\": \"Café da Manhã\",\n        \"time\": \"07:00\",\n        \"calories\": numero,\n        \"foods\": [\"alimento 1 com porção\", \"alimento 2 com porção\"]\n      }\n    ],\n    \"tips\": [\"dica 1\", \"dica 2\", \"dica 3\"]\n  },\n  \"training\": {\n    \"weekly_schedule\": [\n      {\n        \"day\": \"Segunda\",\n        \"type\": \"Push (Peito/Ombro/Tríceps)\",\n        \"duration_minutes\": 55,\n        \"exercises\": [\n          {\n            \"name\": \"Supino Reto\",\n            \"sets\": 4,\n            \"reps\": \"8-12\",\n            \"rest_seconds\": 90,\n            \"notes\": \"Foco em contração\"\n          }\n        ]\n      }\n    ],\n    \"cardio\": {\n      \"type\": \"tipo de cardio recomendado\",\n      \"frequency\": \"X vezes por semana\",\n      \"duration\": \"X minutos\"\n    },\n    \"tips\": [\"dica de treino 1\", \"dica 2\"]\n  },\n  \"motivation\": \"Mensagem motivacional personalizada para o usuário\"\n}\n\nIMPORTANTE:\n- 5-6 refeições por dia distribuídas adequadamente\n- Treino de 4-5 dias por semana (Push/Pull/Legs ou Full Body)\n- Seja específico com alimentos, porções e exercícios brasileiros\n- Retorne APENAS o JSON, sem texto adicional, sem markdown`;\n\nreturn {\n  systemPrompt,\n  userId: user_id,\n  calculatedData: {\n    tmb,\n    tdee,\n    calorieTarget,\n    proteinTarget,\n    carbsTarget,\n    fatTarget,\n    goal,\n    goalDescription\n  }\n};"
+            },
+            "id": "code-prepare-plan",
+            "name": "Preparar Cálculos",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                460,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "https://api.openai.com/v1/chat/completions",
+                "authentication": "genericCredentialType",
+                "genericAuthType": "httpHeaderAuth",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ]
+                },
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={\n  \"model\": \"gpt-4o\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": {{ JSON.stringify($json.systemPrompt) }}\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Crie o plano personalizado completo em JSON.\"\n    }\n  ],\n  \"max_tokens\": 4000,\n  \"temperature\": 0.4\n}",
+                "options": {
+                    "timeout": 120000
+                }
+            },
+            "id": "openai-plan",
+            "name": "OpenAI Generate Plan",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                680,
+                300
+            ],
+            "credentials": {
+                "httpHeaderAuth": {
+                    "id": "SUBSTITUA_PELA_SUA_CREDENCIAL",
+                    "name": "OpenAI API Key"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "jsCode": "const response = $input.first().json;\nconst calculatedData = $('Preparar Cálculos').first().json.calculatedData;\n\ntry {\n  let content = response.choices?.[0]?.message?.content;\n  \n  if (!content) {\n    throw new Error('Resposta vazia da IA');\n  }\n  \n  // Limpar possíveis backticks de markdown\n  content = content.replace(/```json\\n?/g, '').replace(/```\\n?/g, '').trim();\n  \n  // Parsear JSON\n  const plan = JSON.parse(content);\n  \n  return {\n    success: true,\n    plan,\n    calculations: calculatedData,\n    generated_at: new Date().toISOString()\n  };\n  \n} catch (error) {\n  // Fallback com plano básico\n  return {\n    success: false,\n    error: error.message,\n    calculations: calculatedData,\n    plan: {\n      nutrition: {\n        daily_calories: calculatedData.calorieTarget,\n        daily_protein: calculatedData.proteinTarget,\n        daily_carbs: calculatedData.carbsTarget,\n        daily_fat: calculatedData.fatTarget,\n        meals: [],\n        tips: ['Erro ao gerar plano detalhado. Use as metas calculadas acima.']\n      },\n      training: {\n        weekly_schedule: [],\n        cardio: {},\n        tips: ['Erro ao gerar treino. Consulte um profissional.']\n      },\n      motivation: 'Desculpe, houve um erro. Mas não desista! Suas metas foram calculadas.'\n    },\n    generated_at: new Date().toISOString()\n  };\n}"
+            },
+            "id": "code-parse-plan",
+            "name": "Processar Plano",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                900,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "respondWith": "json",
+                "responseBody": "={{ $json }}",
+                "options": {
+                    "responseHeaders": {
+                        "entries": [
+                            {
+                                "name": "Access-Control-Allow-Origin",
+                                "value": "*"
+                            }
+                        ]
+                    }
+                }
+            },
+            "id": "respond-plan",
+            "name": "Responder",
+            "type": "n8n-nodes-base.respondToWebhook",
+            "typeVersion": 1.1,
+            "position": [
+                1120,
+                300
+            ]
+        }
+    ],
+    "connections": {
+        "Webhook - Generate Plan": {
+            "main": [
+                [
+                    {
+                        "node": "Preparar Cálculos",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Preparar Cálculos": {
+            "main": [
+                [
+                    {
+                        "node": "OpenAI Generate Plan",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "OpenAI Generate Plan": {
+            "main": [
+                [
+                    {
+                        "node": "Processar Plano",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Processar Plano": {
+            "main": [
+                [
+                    {
+                        "node": "Responder",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "settings": {
+        "executionOrder": "v1"
+    },
+    "staticData": null,
+    "tags": [],
+    "triggerCount": 0,
+    "pinData": {}
+}
