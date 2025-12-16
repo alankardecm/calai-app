@@ -254,16 +254,19 @@ const Onboarding = () => {
                     </div>
 
                     {/* Gender Toggle */}
-                    <div className="flex bg-surface-dark rounded-xl p-1">
+                    <div className="flex bg-surface-dark rounded-xl p-1.5 gap-2">
                         {['masculino', 'feminino'].map((gender) => (
                             <button
                                 key={gender}
                                 onClick={() => setFormData({ ...formData, gender })}
-                                className={`flex-1 py-3 px-4 rounded-lg font-medium transition-all ${formData.gender === gender
-                                        ? 'bg-surface-light text-white'
-                                        : 'text-text-secondary'
+                                className={`flex-1 py-3 px-4 rounded-lg font-semibold transition-all flex items-center justify-center gap-2 ${formData.gender === gender
+                                    ? 'bg-primary text-background-dark'
+                                    : 'bg-transparent text-text-muted hover:text-white'
                                     }`}
                             >
+                                <span className="material-symbols-outlined text-lg">
+                                    {gender === 'masculino' ? 'male' : 'female'}
+                                </span>
                                 {gender.charAt(0).toUpperCase() + gender.slice(1)}
                             </button>
                         ))}
@@ -361,8 +364,8 @@ const Onboarding = () => {
                                 key={goal.id}
                                 onClick={() => setFormData({ ...formData, goal: goal.id })}
                                 className={`w-full p-4 rounded-xl text-left transition-all flex items-center gap-4 ${formData.goal === goal.id
-                                        ? 'bg-primary/10 border-2 border-primary'
-                                        : 'bg-surface-dark border-2 border-transparent'
+                                    ? 'bg-primary/10 border-2 border-primary'
+                                    : 'bg-surface-dark border-2 border-transparent'
                                     }`}
                             >
                                 <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${formData.goal === goal.id ? 'bg-primary/20' : 'bg-surface-light'
@@ -389,17 +392,17 @@ const Onboarding = () => {
             </div>
 
             {/* Fixed Bottom Button */}
-            <div className="fixed bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-background-dark via-background-dark to-transparent">
+            <div className="fixed bottom-0 left-0 right-0 p-6 pb-8 bg-gradient-to-t from-background-dark via-background-dark/95 to-transparent z-50">
                 <button
                     onClick={handleSubmit}
                     disabled={loading}
-                    className="w-full py-4 bg-primary hover:bg-primary-dark rounded-xl font-bold text-background-dark flex items-center justify-center gap-2 transition-all shadow-glow disabled:opacity-50"
+                    className="w-full py-5 bg-primary hover:bg-primary-dark rounded-2xl font-bold text-background-dark text-lg flex items-center justify-center gap-3 transition-all shadow-glow disabled:opacity-50"
                 >
                     {loading ? (
-                        <div className="w-5 h-5 border-2 border-background-dark/30 border-t-background-dark rounded-full animate-spin"></div>
+                        <div className="w-6 h-6 border-3 border-background-dark/30 border-t-background-dark rounded-full animate-spin"></div>
                     ) : (
                         <>
-                            <span className="material-symbols-outlined">auto_awesome</span>
+                            <span className="material-symbols-outlined text-2xl">auto_awesome</span>
                             Gerar Plano com IA
                         </>
                     )}

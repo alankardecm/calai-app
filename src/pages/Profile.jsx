@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../components/ToastSystem';
@@ -235,6 +236,13 @@ const Profile = () => {
 
             {/* Settings Menu */}
             <section className="flex flex-col gap-2">
+                <MenuItemLink
+                    icon="auto_awesome"
+                    label="Configurar Treinador IA"
+                    description="Atualizar dados e objetivos"
+                    to="/onboarding"
+                    highlighted
+                />
                 <MenuItem icon="person" label="Dados Pessoais" onClick={() => toast.info('Em breve!')} />
                 <MenuItem icon="notifications" label="Notificações" onClick={() => toast.info('Em breve!')} />
                 <MenuItem icon="lock" label="Privacidade e Dados" onClick={() => toast.info('Em breve!')} />
@@ -329,6 +337,26 @@ const MenuItem = ({ icon, label, onClick }) => (
         </div>
         <span className="material-symbols-outlined text-text-muted">chevron_right</span>
     </button>
+);
+
+const MenuItemLink = ({ icon, label, description, to, highlighted }) => (
+    <Link
+        to={to}
+        className={`card flex items-center w-full p-4 transition-colors group ${highlighted ? 'border-primary/50 bg-primary/5' : 'hover:border-primary/30'
+            }`}
+    >
+        <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${highlighted
+                ? 'bg-primary text-surface-dark'
+                : 'bg-white/5 text-text-secondary group-hover:bg-primary group-hover:text-surface-dark'
+            }`}>
+            <span className="material-symbols-outlined">{icon}</span>
+        </div>
+        <div className="flex-1 text-left ml-4">
+            <p className={`font-medium text-sm ${highlighted ? 'text-primary' : 'text-white'}`}>{label}</p>
+            {description && <p className="text-xs text-text-muted">{description}</p>}
+        </div>
+        <span className={`material-symbols-outlined ${highlighted ? 'text-primary' : 'text-text-muted'}`}>chevron_right</span>
+    </Link>
 );
 
 const ProfileSkeleton = () => (
