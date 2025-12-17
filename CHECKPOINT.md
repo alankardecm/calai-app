@@ -1,129 +1,135 @@
-# 🔖 CHECKPOINT - FitAI Pro
-**Data:** 15/12/2024 às 23:26
-**Commit:** `db60027`
+# 🏁 CHECKPOINT - NutriSnap App
+
+**Data:** 16/12/2024  
+**Versão:** 1.0.3  
+**Deploy:** https://mynutrisnap.vercel.app
 
 ---
 
-## 🚀 COMO CONTINUAR
+## 📊 Estado Atual do Projeto
 
-### 1. Iniciar o servidor
-```powershell
-cd "c:\Users\Alan Moreira\Documents\54 - FITNES\fitness-pro"
-npm run dev
+### ✅ Funcionando
+- [x] Autenticação (Login/Cadastro) via Supabase
+- [x] Onboarding com cálculo de metas
+- [x] Dashboard com calorias e macros
+- [x] Perfil do usuário editável
+- [x] Calendário de treinos dinâmico
+- [x] Coach IA (chat básico)
+- [x] PWA instalável
+
+### ⚠️ Parcialmente Funcionando
+- [ ] Coach IA - contexto da conversa a melhorar
+- [ ] Iniciar Treino - só alerta temporário
+
+### 🔜 Não Implementado
+- [ ] Scanner de comida com IA
+- [ ] Histórico de refeições
+- [ ] Notificações push
+- [ ] Estatísticas detalhadas
+
+---
+
+## 🗄️ Banco de Dados (Supabase)
+
+### Tabelas Configuradas:
+- `profiles` - Dados dos usuários, metas, objetivos
+- `meals` - Refeições (estrutura pronta)
+- `daily_summaries` - Resumos diários (estrutura pronta)
+- `diets` - Dietas (estrutura pronta)
+
+### Usuários Ativos:
+| Email | Status |
+|-------|--------|
+| alankardecm@gmail.com | ✅ Completo |
+| jusantangelo7@gmail.com | ✅ Completo |
+
+---
+
+## 🤖 Integrações N8N
+
+### Workflows:
+1. **Coach Chat** - `/webhook/chat-coach`
+   - Status: ⚠️ Funcionando, mas contexto precisa ajuste
+   
+2. **Generate Plan** - `/webhook/generate-plan`
+   - Status: 🔜 A configurar
+
+### Credenciais Necessárias:
+- OpenAI API Key (configurada)
+
+---
+
+## 📁 Estrutura do Projeto
+
+```
+fitness-pro/
+├── src/
+│   ├── components/
+│   │   ├── Layout.jsx
+│   │   └── ToastSystem.jsx
+│   ├── contexts/
+│   │   └── AuthContext.jsx
+│   ├── pages/
+│   │   ├── Dashboard.jsx
+│   │   ├── Coach.jsx
+│   │   ├── Workouts.jsx
+│   │   ├── Profile.jsx
+│   │   ├── Onboarding.jsx
+│   │   ├── Login.jsx
+│   │   └── Landing.jsx
+│   ├── hooks/
+│   │   └── useNotifications.jsx
+│   ├── App.jsx
+│   ├── main.jsx
+│   └── index.css
+├── public/
+│   ├── manifest.json
+│   ├── sw.js
+│   └── icons/
+├── n8n-workflow-coach-chat.json
+├── n8n-workflow-generate-plan.json
+├── supabase-nutrisnap-schema.sql
+├── supabase-migration-onboarding.sql
+└── SESSAO_16_12_2024.md
 ```
 
-### 2. URLs importantes
-- **Local:** http://localhost:5173
-- **Produção:** https://mynutrisnap.vercel.app
+---
+
+## 🔧 Configuração Necessária
+
+### Variáveis de Ambiente (.env):
+```
+VITE_SUPABASE_URL=https://xxx.supabase.co
+VITE_SUPABASE_ANON_KEY=xxx
+VITE_N8N_COACH_URL=https://n8n.xxx/webhook/chat-coach
+VITE_N8N_GENERATE_PLAN_URL=https://n8n.xxx/webhook/generate-plan
+```
+
+### N8N:
+- Importar workflows JSON
+- Configurar credencial OpenAI
+- Ativar workflows
+
+---
+
+## 📝 Próximos Passos Sugeridos
+
+### Sessão 17/12/2024:
+1. Testar Coach IA com novo prompt
+2. Verificar persistência do histórico de conversa
+3. Implementar Scanner de Comida
+4. Melhorar UX do "Iniciar Treino"
+
+---
+
+## 🔗 Links Importantes
+
+- **App:** https://mynutrisnap.vercel.app
 - **GitHub:** https://github.com/alankardecm/calai-app
+- **Supabase:** https://supabase.com/dashboard
 - **N8N:** https://n8n.srv1121163.hstgr.cloud
+- **Vercel:** https://vercel.com/dashboard
 
 ---
 
-## 📱 ESTADO ATUAL DO APP
-
-### Páginas funcionando:
-| Rota | Página | Status |
-|------|--------|--------|
-| `/login` | Login | ✅ |
-| `/` | Dashboard | ✅ |
-| `/onboarding` | Configurar Treinador IA | ✅ NOVO |
-| `/workouts` | Plano de Treinos | ✅ NOVO |
-| `/coach` | Chat Coach IA | ✅ NOVO |
-| `/scan` | Scanner de Comida | ✅ |
-| `/history` | Histórico | ✅ |
-| `/profile` | Perfil | ✅ |
-
-### Workflows N8N ativos:
-| Endpoint | Função | Modelo |
-|----------|--------|--------|
-| `/analyze-food` | Analisar foto de comida | GPT-4o Vision |
-| `/chat-coach` | Chat motivacional | GPT-4o-mini |
-| `/generate-plan` | Gerar plano treino/dieta | GPT-4o |
-
----
-
-## 🎯 PRÓXIMAS TAREFAS (por prioridade)
-
-### Alta Prioridade
-- [ ] **Testar fluxo completo:** Login → Onboarding → Dashboard → Coach
-- [ ] **Redirecionar novos usuários** para /onboarding automaticamente
-- [ ] **Página de Vendas** para Kirvano
-
-### Média Prioridade
-- [ ] Melhorar PWA (manifest.json, ícones)
-- [ ] Gráficos de progresso (histórico visual)
-- [ ] Notificações push (lembrete de refeições)
-
-### Baixa Prioridade
-- [ ] Temas (dark/light)
-- [ ] Exportar dados (PDF/CSV)
-- [ ] Integração com smartwatch
-
----
-
-## 🧠 ARQUITETURA
-
-```
-[App React/Vite] ←→ [N8N Webhooks] ←→ [OpenAI GPT-4]
-       ↓                                    
-  [Supabase]                              
-  - profiles                              
-  - meals                                 
-  - diets                                 
-```
-
-### Cálculos científicos usados:
-- **TMB:** Mifflin-St Jeor (1990)
-- **TDEE:** Fatores PAL da OMS
-- **Macros:** ISSN Guidelines
-
----
-
-## 📁 ARQUIVOS PRINCIPAIS
-
-```
-src/
-├── pages/
-│   ├── Onboarding.jsx     # Configurar Treinador IA
-│   ├── Coach.jsx          # Chat motivacional
-│   ├── Workouts.jsx       # Plano de treinos
-│   ├── Dashboard.jsx      # Home
-│   └── Profile.jsx        # Perfil + link config
-├── components/
-│   ├── Layout.jsx         # Bottom nav
-│   └── FoodRecognition.jsx # Scanner
-└── App.jsx                # Rotas
-
-n8n-workflow-coach-chat.json      # Workflow chat
-n8n-workflow-generate-plan.json   # Workflow plano
-N8N_BRAIN_SETUP.md                # Documentação N8N
-```
-
----
-
-## 💡 DICAS RÁPIDAS
-
-1. **Testar Coach:** Acesse `/coach` e envie uma mensagem
-2. **Testar Onboarding:** Acesse `/onboarding` e preencha os dados
-3. **Ver N8N:** Acesse https://n8n.srv1121163.hstgr.cloud
-4. **Logs:** F12 → Console no navegador
-
----
-
-## 🔧 COMANDOS ÚTEIS
-
-```powershell
-# Iniciar dev
-npm run dev
-
-# Build produção
-npm run build
-
-# Commit e push
-git add -A && git commit -m "feat: sua mensagem" && git push origin main
-```
-
----
-
-**Boa continuação! 🚀**
+*Checkpoint criado em 16/12/2024 às 22:45*
