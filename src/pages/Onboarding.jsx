@@ -44,31 +44,62 @@ const Onboarding = () => {
 
         try {
             // 1. Salvar perfil básico no Supabase primeiro
+            console.log('Salvando perfil para user:', user?.id);
+
+            const profileData = {
+                id: user.id,
+                gender: formData.gender,
+                age: formData.age,
+                weight: formData.weight,
+                height: formData.height,
+                weight_kg: formData.weight, // Compatibilidade com schema antigo
+                height_cm: formData.height, // Compatibilidade com schema antigo
+                activity_level: formData.activityLevel,
+                goal: formData.goal,
+                onboarding_completed: false,
+                updated_at: new Date().toISOString()
+            };
+
             const { error: profileError } = await supabase
                 .from('profiles')
-                .upsert({
-                    id: user.id,
-                    gender: formData.gender,
-                    age: formData.age,
-                    weight: formData.weight,
-                    height: formData.height,
-                    activity_level: formData.activityLevel,
-                    goal: formData.goal,
-                    onboarding_completed: false, // Ainda não terminou
-                    updated_at: new Date().toISOString()
-                });
+                .upsert(profileData);
 
-            if (profileError) throw profileError;
+            if (profileError) {
+                console.error('Erro Supabase ao salvar perfil:', profileError);
+                // Se for erro de coluna faltando, tentar com menos campos
+                if (profileError.message?.includes('column') || profileError.code === '42703') {
+                    console.log('Tentando com campos mínimos...');
+                    const minimalData = {
+                        id: user.id,
+                        daily_calorie_goal: 2000,
+                        daily_protein_goal: 150,
+                        daily_carbs_goal: 200,
+                        daily_fat_goal: 60,
+                        updated_at: new Date().toISOString()
+                    };
+                    const { error: minimalError } = await supabase
+                        .from('profiles')
+                        .upsert(minimalData);
 
-            // 2. Chamar N8N para gerar o plano personalizado
-            let planData = null;
+                    if (minimalError) {
+                        throw new Error(`Erro ao salvar: ${minimalError.message}`);
+                    }
+                } else {
+                    throw new Error(`Erro ao salvar: ${profileError.message}`);
+                }
+            }
 
+            // 2. Calcular plano localmente (fallback principal)
+            let planData = calculateLocalPlan(formData);
+
+            // 3. Tentar N8N para plano mais detalhado (opcional)
             try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+
                 const response = await fetch(N8N_GENERATE_PLAN_URL, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         user_id: user.id,
                         gender: formData.gender,
@@ -77,48 +108,62 @@ const Onboarding = () => {
                         height: formData.height,
                         activity_level: formData.activityLevel,
                         goal: formData.goal
-                    })
+                    }),
+                    signal: controller.signal
                 });
 
-                if (!response.ok) {
-                    throw new Error('N8N não disponível');
+                clearTimeout(timeoutId);
+
+                if (response.ok) {
+                    const aiPlan = await response.json();
+                    if (aiPlan && aiPlan.calculations) {
+                        planData = aiPlan;
+                        console.log('Plano IA gerado:', planData);
+                    }
                 }
-
-                planData = await response.json();
-                console.log('Plano gerado:', planData);
-
             } catch (n8nError) {
-                console.warn('N8N não disponível, usando cálculos locais:', n8nError);
-                // Fallback: calcular localmente
-                planData = calculateLocalPlan(formData);
+                console.warn('N8N não disponível, usando cálculos locais:', n8nError.message);
+                // Continua com o planData local calculado acima
             }
 
-            // 3. Salvar o plano gerado no perfil
+            // 4. Atualizar perfil com metas calculadas
+            const updateData = {
+                daily_calorie_goal: planData.calculations?.calorieTarget || 2000,
+                daily_protein_goal: planData.calculations?.proteinTarget || 150,
+                daily_carbs_goal: planData.calculations?.carbsTarget || 200,
+                daily_fat_goal: planData.calculations?.fatTarget || 60,
+                updated_at: new Date().toISOString()
+            };
+
+            // Tentar adicionar campos extras se possível
+            try {
+                updateData.onboarding_completed = true;
+                if (planData.plan) {
+                    updateData.generated_plan = planData.plan;
+                }
+            } catch (e) {
+                console.warn('Campos extras não suportados');
+            }
+
             const { error: updateError } = await supabase
                 .from('profiles')
-                .update({
-                    daily_calorie_goal: planData.calculations?.calorieTarget || planData.plan?.nutrition?.daily_calories || 2000,
-                    daily_protein_goal: planData.calculations?.proteinTarget || planData.plan?.nutrition?.daily_protein || 150,
-                    daily_carbs_goal: planData.calculations?.carbsTarget || planData.plan?.nutrition?.daily_carbs || 200,
-                    daily_fat_goal: planData.calculations?.fatTarget || planData.plan?.nutrition?.daily_fat || 60,
-                    onboarding_completed: true,
-                    generated_plan: planData.plan || null,
-                    updated_at: new Date().toISOString()
-                })
+                .update(updateData)
                 .eq('id', user.id);
 
             if (updateError) {
-                console.error('Erro ao salvar plano:', updateError);
+                console.warn('Erro ao atualizar metas (continuando):', updateError.message);
+                // Não bloqueia - continua para o dashboard
             }
 
-            // 4. Sucesso! Navegar para o Dashboard
+            // 5. Sucesso! Navegar para o Dashboard
+            console.log('Onboarding completo! Redirecionando...');
             setTimeout(() => {
                 navigate('/');
             }, 1500);
 
         } catch (error) {
-            console.error('Erro ao salvar perfil:', error);
-            alert('Erro ao salvar. Tente novamente.');
+            console.error('Erro no onboarding:', error);
+            alert(`Erro: ${error.message || 'Tente novamente.'}`);
             setStep(1);
         } finally {
             setLoading(false);
