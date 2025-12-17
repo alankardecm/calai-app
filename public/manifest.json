@@ -1,29 +1,89 @@
 {
-    "name": "FitAI Pro - Treinador Pessoal com IA",
-    "short_name": "FitAI Pro",
-    "description": "Seu treinador pessoal com inteligência artificial. Tire fotos das suas refeições e receba análise nutricional instantânea.",
+    "name": "NutriSnap - Acompanhe sua Alimentação",
+    "short_name": "NutriSnap",
+    "description": "Acompanhe suas refeições com praticidade. Tire uma foto e a IA ajuda a registrar calorias e nutrientes de forma simples.",
     "start_url": "/",
     "display": "standalone",
-    "background_color": "#152111",
+    "background_color": "#0a0f08",
     "theme_color": "#4cdf20",
     "orientation": "portrait",
+    "scope": "/",
+    "lang": "pt-BR",
+    "dir": "ltr",
     "icons": [
         {
             "src": "/icon-192x192.png",
             "sizes": "192x192",
             "type": "image/png",
-            "purpose": "any maskable"
+            "purpose": "any"
+        },
+        {
+            "src": "/icon-192x192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "maskable"
         },
         {
             "src": "/icon-512x512.png",
             "sizes": "512x512",
             "type": "image/png",
-            "purpose": "any maskable"
+            "purpose": "any"
+        },
+        {
+            "src": "/icon-512x512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "maskable"
         }
     ],
     "categories": [
         "health",
         "fitness",
-        "lifestyle"
-    ]
+        "lifestyle",
+        "food"
+    ],
+    "screenshots": [
+        {
+            "src": "/screenshot-dashboard.png",
+            "sizes": "390x844",
+            "type": "image/png",
+            "form_factor": "narrow",
+            "label": "Dashboard principal do NutriSnap"
+        }
+    ],
+    "shortcuts": [
+        {
+            "name": "Escanear Refeição",
+            "short_name": "Scan",
+            "description": "Tirar foto de uma refeição",
+            "url": "/scan",
+            "icons": [
+                {
+                    "src": "/icon-192x192.png",
+                    "sizes": "192x192"
+                }
+            ]
+        },
+        {
+            "name": "Coach IA",
+            "short_name": "Coach",
+            "description": "Conversar com o assistente",
+            "url": "/coach",
+            "icons": [
+                {
+                    "src": "/icon-192x192.png",
+                    "sizes": "192x192"
+                }
+            ]
+        }
+    ],
+    "prefer_related_applications": false,
+    "display_override": [
+        "standalone",
+        "minimal-ui"
+    ],
+    "handle_links": "preferred",
+    "launch_handler": {
+        "client_mode": "navigate-existing"
+    }
 }

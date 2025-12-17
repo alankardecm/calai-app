@@ -17,6 +17,7 @@ import Profile from './pages/Profile';
 import Stats from './pages/Stats';
 import Onboarding from './pages/Onboarding';
 import Coach from './pages/Coach';
+import Landing from './pages/Landing';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -47,7 +48,21 @@ function App() {
         <div className="min-h-screen bg-background-dark">
           <Routes>
             {/* Public Routes */}
+            <Route path="/landing" element={<Landing />} />
             <Route path="/login" element={<Login />} />
+
+            {/* Standalone Protected Routes (sem Layout) */}
+            <Route path="/onboarding" element={
+              <ProtectedRoute>
+                <Onboarding />
+              </ProtectedRoute>
+            } />
+
+            <Route path="/coach" element={
+              <ProtectedRoute>
+                <Coach />
+              </ProtectedRoute>
+            } />
 
             {/* Protected Routes with Layout */}
             <Route path="/" element={
@@ -75,12 +90,6 @@ function App() {
 
               {/* Stats (pode ser acessado do Dashboard) */}
               <Route path="stats" element={<Stats />} />
-
-              {/* Coach Motivacional */}
-              <Route path="coach" element={<Coach />} />
-
-              {/* Onboarding */}
-              <Route path="onboarding" element={<Onboarding />} />
             </Route>
 
             {/* Fallback */}
