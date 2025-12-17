@@ -291,7 +291,7 @@ const Coach = () => {
                     </button>
 
                     {/* Input */}
-                    <div className="flex-1 bg-surface-light rounded-full px-4 py-3 flex items-center">
+                    <div className="flex-1 bg-surface-dark border border-white/20 rounded-full px-4 py-3 flex items-center">
                         <input
                             type="text"
                             value={inputMessage}
