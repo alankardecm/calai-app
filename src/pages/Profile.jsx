@@ -59,22 +59,44 @@ const Profile = () => {
     const handleSave = async () => {
         setSaving(true);
         try {
+            // Preparar dados para salvar
+            const updateData = {
+                daily_calorie_goal: parseInt(formData.daily_calorie_goal) || 2000,
+                daily_protein_goal: parseInt(formData.daily_protein_goal) || 150,
+                daily_carbs_goal: parseInt(formData.daily_carbs_goal) || 200,
+                daily_fat_goal: parseInt(formData.daily_fat_goal) || 60,
+                updated_at: new Date().toISOString()
+            };
+
+            // Adicionar campos opcionais se preenchidos
+            if (formData.full_name) updateData.full_name = formData.full_name;
+            if (formData.weight_kg) {
+                updateData.weight_kg = parseFloat(formData.weight_kg);
+                updateData.weight = parseFloat(formData.weight_kg); // Campo novo
+            }
+            if (formData.height_cm) {
+                updateData.height_cm = parseInt(formData.height_cm);
+                updateData.height = parseInt(formData.height_cm); // Campo novo
+            }
+
+            console.log('Salvando perfil:', updateData);
+
             const { error } = await supabase
                 .from('profiles')
-                .upsert([{
-                    id: user.id,
-                    ...formData,
-                    updated_at: new Date().toISOString()
-                }]);
+                .update(updateData)
+                .eq('id', user.id);
 
-            if (error) throw error;
+            if (error) {
+                console.error('Erro Supabase:', error);
+                throw error;
+            }
 
             toast.success('✅ Perfil atualizado com sucesso!');
             setEditing(false);
             fetchProfile();
         } catch (err) {
             console.error('Erro ao salvar:', err);
-            toast.error('❌ Erro ao atualizar perfil');
+            toast.error(`❌ Erro: ${err.message || 'Tente novamente'}`);
         } finally {
             setSaving(false);
         }
@@ -346,8 +368,8 @@ const MenuItemLink = ({ icon, label, description, to, highlighted }) => (
             }`}
     >
         <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${highlighted
-                ? 'bg-primary text-surface-dark'
-                : 'bg-white/5 text-text-secondary group-hover:bg-primary group-hover:text-surface-dark'
+            ? 'bg-primary text-surface-dark'
+            : 'bg-white/5 text-text-secondary group-hover:bg-primary group-hover:text-surface-dark'
             }`}>
             <span className="material-symbols-outlined">{icon}</span>
         </div>
