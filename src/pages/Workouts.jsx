@@ -1,15 +1,41 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { workouts } from '../data';
 
 const Workouts = () => {
     const navigate = useNavigate();
-    const [currentWeek, setCurrentWeek] = useState(4);
-    const [selectedDay, setSelectedDay] = useState(1); // 0 = segunda, 1 = terça...
+    const [isStarting, setIsStarting] = useState(false);
 
-    // Dias da semana
-    const weekDays = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB', 'DOM'];
-    const dates = [24, 25, 26, 27, 28, 29, 30]; // Exemplo de datas
+    // Calcular a semana atual e datas dinamicamente
+    const { currentWeek, weekDays, dates, todayDayIndex } = useMemo(() => {
+        const today = new Date();
+        const dayOfWeek = today.getDay(); // 0 = domingo, 1 = segunda...
+        const todayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Converter para 0 = segunda
+
+        // Calcular o início da semana (segunda-feira)
+        const monday = new Date(today);
+        monday.setDate(today.getDate() - todayIndex);
+
+        // Gerar as datas da semana
+        const weekDates = [];
+        for (let i = 0; i < 7; i++) {
+            const d = new Date(monday);
+            d.setDate(monday.getDate() + i);
+            weekDates.push(d.getDate());
+        }
+
+        // Calcular número da semana do mês
+        const weekNum = Math.ceil(today.getDate() / 7);
+
+        return {
+            currentWeek: weekNum,
+            weekDays: ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB', 'DOM'],
+            dates: weekDates,
+            todayDayIndex: todayIndex
+        };
+    }, []);
+
+    const [selectedDay, setSelectedDay] = useState(todayDayIndex);
 
     // Mapear treinos por índice de dia
     const workoutsByDay = {
@@ -28,11 +54,41 @@ const Workouts = () => {
     const warmupExercises = todayWorkout?.exercises?.slice(0, 1) || [];
     const mainExercises = todayWorkout?.exercises?.slice(1) || [];
 
-    // Próximos dias
-    const upcomingDays = [
-        { id: 'pull', name: 'Pull Day (Costas & Bíceps)', exercises: 6, duration: 60 },
-        { id: 'rest', name: 'Descanso Ativo', description: 'Mobilidade & Cardio Leve' }
-    ];
+    // Calcular próximos dias dinamicamente
+    const upcomingDays = useMemo(() => {
+        const upcoming = [];
+        for (let i = 1; i <= 2; i++) {
+            const nextDayIndex = (selectedDay + i) % 7;
+            const nextWorkout = workoutsByDay[nextDayIndex];
+            if (nextWorkout) {
+                upcoming.push({
+                    id: nextWorkout.id,
+                    name: nextWorkout.title,
+                    exercises: nextWorkout.exercises?.length || 0,
+                    duration: nextWorkout.duration || 45,
+                    dayLabel: weekDays[nextDayIndex]
+                });
+            } else {
+                upcoming.push({
+                    id: 'rest',
+                    name: 'Descanso Ativo',
+                    description: 'Mobilidade & Cardio Leve',
+                    dayLabel: weekDays[nextDayIndex]
+                });
+            }
+        }
+        return upcoming;
+    }, [selectedDay]);
+
+    // Handler para iniciar treino
+    const handleStartWorkout = () => {
+        setIsStarting(true);
+        // Simular início do treino
+        setTimeout(() => {
+            alert(`🏋️ Treino "${todayWorkout?.title}" iniciado!\n\nEm breve: cronômetro, tracking de séries e mais!`);
+            setIsStarting(false);
+        }, 500);
+    };
 
     const getWorkoutTagColor = (title) => {
         if (title?.includes('Push')) return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
@@ -60,7 +116,8 @@ const Workouts = () => {
                 <div className="flex justify-between">
                     {weekDays.map((day, index) => {
                         const isSelected = selectedDay === index;
-                        const isCompleted = index < selectedDay;
+                        const isToday = index === todayDayIndex;
+                        const isCompleted = index < todayDayIndex;
 
                         return (
                             <button
@@ -68,14 +125,16 @@ const Workouts = () => {
                                 onClick={() => setSelectedDay(index)}
                                 className="flex flex-col items-center gap-1"
                             >
-                                <span className={`text-xs font-medium ${isSelected ? 'text-primary' : 'text-text-muted'
+                                <span className={`text-xs font-medium ${isSelected ? 'text-primary' : isToday ? 'text-white' : 'text-text-muted'
                                     }`}>
                                     {day}
                                 </span>
                                 <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${isSelected
-                                        ? 'bg-primary text-background-dark font-bold'
-                                        : isCompleted
-                                            ? 'bg-surface-dark text-primary border border-primary/30'
+                                    ? 'bg-primary text-background-dark font-bold'
+                                    : isCompleted
+                                        ? 'bg-surface-dark text-primary border border-primary/30'
+                                        : isToday
+                                            ? 'bg-surface-dark text-white border-2 border-primary'
                                             : 'bg-surface-dark text-white'
                                     }`}>
                                     {isCompleted && !isSelected ? (
@@ -155,11 +214,21 @@ const Workouts = () => {
 
                     {/* Botão Iniciar Treino */}
                     <button
-                        onClick={() => navigate('/workout-session')}
-                        className="w-full py-4 bg-primary hover:bg-primary-dark rounded-xl font-bold text-background-dark flex items-center justify-center gap-2 transition-all shadow-glow mb-8"
+                        onClick={handleStartWorkout}
+                        disabled={isStarting}
+                        className={`w-full py-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-glow mb-8 ${isStarting ? 'bg-primary/50 text-background-dark/50' : 'bg-primary hover:bg-primary-dark text-background-dark'}`}
                     >
-                        <span className="material-symbols-outlined">play_arrow</span>
-                        INICIAR TREINO
+                        {isStarting ? (
+                            <>
+                                <span className="material-symbols-outlined animate-spin">sync</span>
+                                INICIANDO...
+                            </>
+                        ) : (
+                            <>
+                                <span className="material-symbols-outlined">play_arrow</span>
+                                INICIAR TREINO
+                            </>
+                        )}
                     </button>
                 </div>
             ) : (
@@ -187,20 +256,21 @@ const Workouts = () => {
                     {upcomingDays.map((day, index) => (
                         <button
                             key={index}
+                            onClick={() => setSelectedDay((selectedDay + index + 1) % 7)}
                             className="w-full flex items-center justify-between p-4 bg-surface-dark rounded-xl hover:bg-surface-light transition-colors"
                         >
                             <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-full bg-surface-light flex items-center justify-center text-text-muted font-bold text-sm">
-                                    Q
+                                <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-xs">
+                                    {day.dayLabel}
                                 </div>
                                 <div className="text-left">
-                                    <h4 className="text-white font-medium">{day.name}</h4>
-                                    <p className="text-text-muted text-sm">
+                                    <h4 className="text-white font-medium text-sm">{day.name}</h4>
+                                    <p className="text-text-secondary text-xs">
                                         {day.exercises ? `${day.exercises} exercícios • ${day.duration} min` : day.description}
                                     </p>
                                 </div>
                             </div>
-                            <span className="material-symbols-outlined text-text-muted">chevron_right</span>
+                            <span className="material-symbols-outlined text-primary">chevron_right</span>
                         </button>
                     ))}
                 </div>

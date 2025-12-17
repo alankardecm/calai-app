@@ -225,7 +225,7 @@ const Coach = () => {
                                 <div
                                     className={`px-4 py-3 rounded-2xl ${message.type === 'user'
                                         ? 'bg-primary text-background-dark rounded-br-md'
-                                        : 'bg-surface-light text-white rounded-bl-md'
+                                        : 'bg-white text-gray-900 rounded-bl-md'
                                         }`}
                                 >
                                     <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.text}</p>
