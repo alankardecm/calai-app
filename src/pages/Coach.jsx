@@ -283,22 +283,23 @@ const Coach = () => {
             )}
 
             {/* Input Area */}
-            <div className="p-4 border-t border-white/10 bg-surface-dark/50 backdrop-blur-sm">
+            <div className="p-4 border-t border-white/10 bg-background-dark">
                 <div className="flex items-center gap-3">
                     {/* Camera Button */}
-                    <button className="p-3 rounded-full bg-surface-light text-text-secondary hover:text-primary transition-colors">
+                    <button className="p-3 rounded-full bg-white/10 text-text-secondary hover:text-primary transition-colors">
                         <span className="material-symbols-outlined">photo_camera</span>
                     </button>
 
                     {/* Input */}
-                    <div className="flex-1 bg-surface-dark border border-white/20 rounded-full px-4 py-3 flex items-center">
+                    <div className="flex-1 bg-white/10 border border-white/20 rounded-full px-4 py-3 flex items-center">
                         <input
                             type="text"
                             value={inputMessage}
                             onChange={(e) => setInputMessage(e.target.value)}
                             onKeyPress={handleKeyPress}
                             placeholder="Pergunte algo ao Coach..."
-                            className="flex-1 bg-transparent text-white text-sm placeholder:text-text-muted focus:outline-none"
+                            className="flex-1 bg-transparent text-white text-sm placeholder:text-gray-400 focus:outline-none"
+                            style={{ color: '#ffffff' }}
                         />
                     </div>
 
